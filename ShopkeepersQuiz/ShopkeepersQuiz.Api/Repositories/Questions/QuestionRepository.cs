@@ -3,6 +3,7 @@ using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Repositories.Questions
@@ -16,9 +17,13 @@ namespace ShopkeepersQuiz.Api.Repositories.Questions
 			_context = context;
 		}
 
-		public Task<IEnumerable<Question>> GetRandomQuestions(int count)
+		public async Task<IEnumerable<Question>> GetRandomQuestionsWithAnswers(int count)
 		{
-			throw new NotImplementedException();
+			return await _context.Questions
+				.Include(x => x.Answers)
+				.OrderBy(x => Guid.NewGuid())
+				.Take(count)
+				.ToListAsync();
 		}
 	}
 }

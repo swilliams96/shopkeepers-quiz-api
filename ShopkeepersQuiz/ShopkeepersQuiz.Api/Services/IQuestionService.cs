@@ -1,5 +1,6 @@
-﻿using ShopkeepersQuiz.Api.Models.Questions;
+﻿using ShopkeepersQuiz.Api.Models.Queue;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Services
 {
@@ -8,6 +9,6 @@ namespace ShopkeepersQuiz.Api.Services
 		/// <summary>
 		/// Gets the next few questions in the queue.
 		/// </summary>
-		public IEnumerable<Question> GetNextQuestions();
+		public Task<IEnumerable<QueueEntry>> GetNextQuestions();
 	}
 }

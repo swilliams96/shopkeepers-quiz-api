@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Microsoft.AspNetCore.Mvc;
+using ShopkeepersQuiz.Api.Services;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 
 namespace ShopkeepersQuiz.Api.Controllers
 {
@@ -10,10 +8,17 @@ namespace ShopkeepersQuiz.Api.Controllers
     [Route("[controller]")]
     public class QuestionsController : Controller
     {
-        [HttpGet]
-        public IActionResult GetLiveQuestion()
+        private readonly IQuestionService _questionService;
+
+        public QuestionsController(IQuestionService questionService)
         {
-            return Ok();
+            _questionService = questionService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetNextQuestions()
+        {
+            return Ok(await _questionService.GetNextQuestions());
         }
     }
 }
