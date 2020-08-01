@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ShopkeepersQuiz.Api.BackgroundServices;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Questions;
-using ShopkeepersQuiz.Api.Services;
+using ShopkeepersQuiz.Api.Services.Questions;
 
 namespace ShopkeepersQuiz.Api
 {
@@ -25,6 +26,8 @@ namespace ShopkeepersQuiz.Api
 			services.AddControllers();
 
 			services.AddDbContext<ApplicationDbContext>();
+
+			services.AddHostedService<WebScraperBackgroundService>();
 
 			RegisterDependencyInjection(services);
 		}
@@ -57,6 +60,7 @@ namespace ShopkeepersQuiz.Api
 			// AConfiguration
 			services.Configure<ConnectionStrings>(options => Configuration.GetSection(nameof(ConnectionStrings)).Bind(options));
 			services.Configure<QuestionSettings>(options => Configuration.GetSection(nameof(QuestionSettings)).Bind(options));
+			services.Configure<ScraperSettings>(options => Configuration.GetSection(nameof(ScraperSettings)).Bind(options));
 
 			// App Services
 			services.AddScoped<IQuestionService, QuestionService>();

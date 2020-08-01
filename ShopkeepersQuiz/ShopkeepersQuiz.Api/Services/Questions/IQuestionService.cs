@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace ShopkeepersQuiz.Api.Services
+namespace ShopkeepersQuiz.Api.Services.Questions
 {
 	public interface IQuestionService
 	{

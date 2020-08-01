@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ShopkeepersQuiz.Api.Services
+namespace ShopkeepersQuiz.Api.Services.Questions
 {
 	public class QuestionService : IQuestionService
 	{

@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Cronos" Version="0.7.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="3.1.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.1.6">
@@ -22,6 +23,7 @@
 
   <ItemGroup>
     <Folder Include="Dtos\" />
+    <Folder Include="Services\Scrapers\" />
   </ItemGroup>
 
 

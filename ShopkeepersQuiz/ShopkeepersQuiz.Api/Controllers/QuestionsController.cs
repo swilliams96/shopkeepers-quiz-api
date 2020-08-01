@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ShopkeepersQuiz.Api.Services;
+using ShopkeepersQuiz.Api.Services.Questions;
 using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Controllers
