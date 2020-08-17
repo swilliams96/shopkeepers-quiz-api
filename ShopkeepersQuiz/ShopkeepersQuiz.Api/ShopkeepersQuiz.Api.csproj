@@ -7,10 +7,14 @@
   <ItemGroup>
     <Compile Remove="Migrations\20200801164908_InitialMigration.cs" />
     <Compile Remove="Migrations\20200801164908_InitialMigration.Designer.cs" />
+    <Compile Remove="Migrations\20200803183105_AddHeroesAbilitiesAndItems.cs" />
+    <Compile Remove="Migrations\20200803183105_AddHeroesAbilitiesAndItems.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Cronos" Version="0.7.0" />
+    <PackageReference Include="Flurl" Version="2.8.2" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.24" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="3.1.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.1.6">
@@ -23,7 +27,6 @@
 
   <ItemGroup>
     <Folder Include="Dtos\" />
-    <Folder Include="Services\Scrapers\" />
   </ItemGroup>
 
 

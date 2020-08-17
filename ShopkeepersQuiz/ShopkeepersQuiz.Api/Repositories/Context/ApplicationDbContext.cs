@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
+using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
 
 namespace ShopkeepersQuiz.Api.Repositories.Context
@@ -17,6 +18,9 @@ namespace ShopkeepersQuiz.Api.Repositories.Context
 
 		public DbSet<Question> Questions { get; set; }
 		public DbSet<Answer> Answers { get; set; }
+		public DbSet<Hero> Heroes { get; set; }
+		public DbSet<Ability> Abilities { get; set; }
+		public DbSet<Item> Items{ get; set; }
 
 		protected override void OnConfiguring(DbContextOptionsBuilder options)
 		{
@@ -34,6 +38,11 @@ namespace ShopkeepersQuiz.Api.Repositories.Context
 				question.HasIndex(x => x.Key)
 					.IsUnique();
 			});
+
+			modelBuilder.Entity<Hero>()
+				.HasMany(x => x.Abilities)
+				.WithOne()
+				.HasForeignKey(x => x.HeroId);
 		}
 	}
 }

@@ -12,8 +12,7 @@ namespace ShopkeepersQuiz.Api.Models.GameEntities
 
 		public string ImageUrl { get; set; }
 
-		[Required]
-		public string Hero { get; set; }
+		public int HeroId { get; set; }
 
 		[Required]
 		public string ManaCost { get; set; }

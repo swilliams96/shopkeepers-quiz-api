@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,6 +9,8 @@ using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Services.Questions;
+using ShopkeepersQuiz.Api.Services.Scrapers;
+using System;
 
 namespace ShopkeepersQuiz.Api
 {
@@ -26,8 +29,6 @@ namespace ShopkeepersQuiz.Api
 			services.AddControllers();
 
 			services.AddDbContext<ApplicationDbContext>();
-
-			services.AddHostedService<WebScraperBackgroundService>();
 
 			RegisterDependencyInjection(services);
 		}
@@ -50,6 +51,18 @@ namespace ShopkeepersQuiz.Api
 			{
 				endpoints.MapControllers();
 			});
+
+			EnsureDatabaseMigrated(app);
+		}
+
+		/// <summary>
+		/// Ensures that the database is migrated fully using EF Core.
+		/// </summary>
+		private static void EnsureDatabaseMigrated(IApplicationBuilder app)
+		{
+			using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
+			using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			context.Database.Migrate();
 		}
 
 		/// <summary>
@@ -67,6 +80,9 @@ namespace ShopkeepersQuiz.Api
 
 			// App Repositories
 			services.AddTransient<IQuestionRepository, QuestionRepository>();
+
+			// Scrapers
+			services.AddTransient<IScraper, GamepediaScraper>();
 		}
 	}
 }
