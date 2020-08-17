@@ -23,15 +23,25 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		private ApplicationDbContext _context;
 
 		/// <summary>
-		/// The abilities that shouldn't be stored as they are not "real" abilities that we want to include questions for.
+		/// The abilities that shouldn't be stored as they are not "real" abilities that we want to generate questions for.
 		/// </summary>
 		private readonly Dictionary<string, string[]> AbilityExceptions = new Dictionary<string, string[]>()
 		{
 			{ "Ancient Apparition", new string[] { "Release" } },
+			{ "Alchemist", new string[] { "Unstable Concoction Throw", "Aghanim's Scepter Synth" } },
 			{ "Bane", new string[] { "Nightmare End" } },
+			{ "Elder Titan", new string[] { "Return Astral Spirit" } },
 			{ "Invoker", new string[] { "Melting Strike" } },
+			{ "Io", new string[] { "Break Tether" } },
+			{ "Keeper of the Light", new string[] { "Release Illuminate", "Illuminate (Aghanim's Scepter)", "Release Illuminate (Aghanim's Scepter)" } },
+			{ "Morphling", new string[] { "Morph Replicate" } },
+			{ "Naga Siren", new string[] { "Song of the Siren End" } },
 			{ "Pangolier", new string[] { "Stop Rolling" } },
+			{ "Phoenix", new string[] { "Stop Sun Ray", "Toggle Movement", "Launch Fire Spirit", "Stop Icarus Dive" } },
+			{ "Timbersaw", new string[] { "Return Chakram", "Return Chakram (Aghanim's Scepter)" } },
 			{ "Tusk", new string[] { "Launch Snowball" } },
+			{ "Underlord", new string[] { "Cancel Dark Rift" } },
+			{ "Undying", new string[] { "Spell Immunity" } },
 			{ "Warlock", new string[] { "Flaming Fists", "Permanent Immolation" } },
 			{ "Weaver", new string[] { "Mana Break" } }
 		};
