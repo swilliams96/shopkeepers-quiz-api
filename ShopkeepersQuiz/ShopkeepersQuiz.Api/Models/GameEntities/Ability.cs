@@ -19,5 +19,9 @@ namespace ShopkeepersQuiz.Api.Models.GameEntities
 
 		[Required]
 		public string Cooldown { get; set; }
+
+		// Navigation Properties
+
+		public Hero Hero { get; private set; }
 	}
 }

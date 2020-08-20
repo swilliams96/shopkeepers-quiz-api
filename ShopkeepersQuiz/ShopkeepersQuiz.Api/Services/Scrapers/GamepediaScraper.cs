@@ -42,6 +42,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 			{ "Tusk", new string[] { "Launch Snowball" } },
 			{ "Underlord", new string[] { "Cancel Dark Rift" } },
 			{ "Undying", new string[] { "Spell Immunity" } },
+			{ "Visage", new string[] { "Stone Form" } },
 			{ "Warlock", new string[] { "Flaming Fists", "Permanent Immolation" } },
 			{ "Weaver", new string[] { "Mana Break" } }
 		};
@@ -49,6 +50,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		public async Task RunScraper(IServiceScope scope)
 		{
 			_context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			_web.UserAgent = "Shopkeeper's Quiz";
 
 			Console.WriteLine("Running Gamepedia scraper...");
 
@@ -79,11 +81,13 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 				throw new NodeNotFoundException("Failed to find any heroes on the hero list at: " + HeroesListUrl);
 			}
 
-			return heroAnchorLinkNodes.Select(heroLink => new Hero()
-			{
-				Name = heroLink.Attributes["title"].DeEntitizeValue,
-				WikiPageUrl = Url.Combine(BaseUrl, heroLink.Attributes["href"].Value)
-			});
+			return heroAnchorLinkNodes
+				.Select(heroLink => new Hero()
+				{
+					Name = heroLink.Attributes["title"].DeEntitizeValue,
+					WikiPageUrl = Url.Combine(BaseUrl, heroLink.Attributes["href"].Value)
+				})
+				.OrderBy(hero => hero.Name);
 		}
 
 		/// <summary>
@@ -119,6 +123,11 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 					}
 
 					if (AbilityExceptions.ContainsKey(hero.Name) && AbilityExceptions[hero.Name].Contains(abilityName))
+					{
+						continue;
+					}
+
+					if (abilities.Where(x => x.HeroId == hero.Id && x.Name == abilityName).Any())
 					{
 						continue;
 					}
@@ -237,7 +246,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 					else
 					{
 						// Remove missing abilities from the hero
-						hero.Abilities.Remove(ability);
+						_context.Remove(ability);
 					}
 				}
 

@@ -41,7 +41,7 @@ namespace ShopkeepersQuiz.Api.Repositories.Context
 
 			modelBuilder.Entity<Hero>()
 				.HasMany(x => x.Abilities)
-				.WithOne()
+				.WithOne(x => x.Hero)
 				.HasForeignKey(x => x.HeroId);
 		}
 	}

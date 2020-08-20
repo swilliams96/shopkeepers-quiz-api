@@ -19,5 +19,10 @@
 		/// The amount of time between question rounds where users are shown the answer from the last round.
 		/// </summary>
 		public decimal AnswerTimeSeconds { get; set; }
+
+		/// <summary>
+		/// The number of incorrect questions that are generated for each question.
+		/// </summary>
+		public int IncorrectAnswersGenerated { get; set; } = 5;
 	}
 }

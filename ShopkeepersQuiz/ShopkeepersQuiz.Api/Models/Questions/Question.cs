@@ -1,4 +1,5 @@
 ﻿using ShopkeepersQuiz.Api.Models.Answers;
+using ShopkeepersQuiz.Api.Models.GameEntities;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -19,8 +20,12 @@ namespace ShopkeepersQuiz.Api.Models.Questions
 
 		public QuestionType Type { get; set; }
 
+		public int? AbilityId { get; set; }
+
 		// Navigation Properties
 
 		public ICollection<Answer> Answers { get; set; }
+
+		public Ability Ability { get; private set; }
 	}
 }

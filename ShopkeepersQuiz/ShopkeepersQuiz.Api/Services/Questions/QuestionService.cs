@@ -15,7 +15,9 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		private readonly IQuestionRepository _questionRepository;
 		private readonly QuestionSettings _questionSettings;
 
-		public QuestionService(IQuestionRepository questionRepository, IOptions<QuestionSettings> questionSettings)
+		public QuestionService(
+			IQuestionRepository questionRepository,
+			IOptions<QuestionSettings> questionSettings)
 		{
 			_questionRepository = questionRepository;
 			_questionSettings = questionSettings.Value;

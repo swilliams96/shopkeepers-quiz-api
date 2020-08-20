@@ -25,5 +25,13 @@ namespace ShopkeepersQuiz.Api.Repositories.Questions
 				.Take(count)
 				.ToListAsync();
 		}
+
+		public async Task<IEnumerable<Question>> GetQuestionsForAbility(int abilityId)
+		{
+			return await _context.Questions
+				.Include(x => x.Answers)
+				.Where(x => x.AbilityId == abilityId)
+				.ToListAsync();
+		}
 	}
 }

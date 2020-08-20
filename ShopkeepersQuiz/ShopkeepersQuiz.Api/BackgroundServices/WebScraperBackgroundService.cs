@@ -3,11 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using ShopkeepersQuiz.Api.Models.Configuration;
+using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -78,19 +77,19 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		/// </summary>
 		private void DoWork(object state)
 		{
-				if (_nextRunTimeUtc <= DateTime.UtcNow)
+			if (_nextRunTimeUtc <= DateTime.UtcNow)
+			{
+				if (_currentlyRunning)
 				{
-					if (_currentlyRunning)
-					{
-						Console.WriteLine("Scrapers are already running! Skipping this run...");
-					}
-					else
-					{
-						RunScrapers().ConfigureAwait(false);
-					}
-
-					_nextRunTimeUtc = _cronExpression.GetNextOccurrence(DateTime.UtcNow) ?? DateTime.MaxValue;
+					Console.WriteLine("Scrapers are already running! Skipping this run...");
 				}
+				else
+				{
+					RunScrapers().ConfigureAwait(false);
+				}
+
+				_nextRunTimeUtc = _cronExpression.GetNextOccurrence(DateTime.UtcNow) ?? DateTime.MaxValue;
+			}
 		}
 
 		/// <summary>
@@ -109,14 +108,18 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 					Console.WriteLine($"Running {scraper.GetType().Name}...");
 					await scraper.RunScraper(scope);
 				}
+
+				Console.WriteLine("Generating questions...");
+				await scope.ServiceProvider.GetRequiredService<IQuestionGenerationService>().GenerateQuestions();
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"Unhandled {ex.GetType().Name} thrown in scraper: {ex.Message}{Environment.NewLine}{ex.StackTrace}");
+				Console.WriteLine($"Unhandled {ex.GetType().Name} thrown in background service: {ex.Message}{Environment.NewLine}{ex.StackTrace}");
 			}
 			finally
 			{
 				_currentlyRunning = false;
+				Console.WriteLine("Background tasks complete!");
 			}
 		}
 	}

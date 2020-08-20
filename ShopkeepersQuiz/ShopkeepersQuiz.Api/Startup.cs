@@ -9,6 +9,7 @@ using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Services.Questions;
+using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
 using System;
 
@@ -77,6 +78,7 @@ namespace ShopkeepersQuiz.Api
 
 			// App Services
 			services.AddScoped<IQuestionService, QuestionService>();
+			services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
 
 			// App Repositories
 			services.AddTransient<IQuestionRepository, QuestionRepository>();
