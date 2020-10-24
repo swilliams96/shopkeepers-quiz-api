@@ -4,6 +4,7 @@ using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
+using ShopkeepersQuiz.Api.Models.Queue;
 
 namespace ShopkeepersQuiz.Api.Repositories.Context
 {
@@ -16,6 +17,7 @@ namespace ShopkeepersQuiz.Api.Repositories.Context
 			_connectionStrings = connectionStrings.Value;
 		}
 
+		public DbSet<QueueEntry> QueueEntries { get; set; }
 		public DbSet<Question> Questions { get; set; }
 		public DbSet<Answer> Answers { get; set; }
 		public DbSet<Hero> Heroes { get; set; }
@@ -29,6 +31,11 @@ namespace ShopkeepersQuiz.Api.Repositories.Context
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
+			modelBuilder.Entity<QueueEntry>()
+				.HasOne(x => x.Question)
+				.WithMany()
+				.HasForeignKey(x => x.QuestionId);
+
 			modelBuilder.Entity<Question>(question =>
 			{
 				question.HasMany(x => x.Answers)
