@@ -4,14 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ShopkeepersQuiz.Api.BackgroundServices;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Questions;
+using ShopkeepersQuiz.Api.Repositories.Queues;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
+using ShopkeepersQuiz.Api.Services.Queues;
 using ShopkeepersQuiz.Api.Services.Scrapers;
-using System;
 
 namespace ShopkeepersQuiz.Api
 {
@@ -24,19 +24,17 @@ namespace ShopkeepersQuiz.Api
 
 		public IConfiguration Configuration { get; }
 
-		// This method gets called by the runtime. Use this method to add services to the container.
 		public void ConfigureServices(IServiceCollection services)
 		{
 			services.AddControllers();
 
 			services.AddDbContext<ApplicationDbContext>();
 
-			services.AddDistributedMemoryCache();	// TODO: swap this out for Redis in future
+			services.AddDistributedMemoryCache();
 
 			RegisterDependencyInjection(services);
 		}
 
-		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
 		public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 		{
 			if (env.IsDevelopment())
@@ -80,10 +78,12 @@ namespace ShopkeepersQuiz.Api
 
 			// App Services
 			services.AddScoped<IQuestionService, QuestionService>();
+			services.AddScoped<IQueueService, QueueService>();
 			services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
 
 			// App Repositories
 			services.AddTransient<IQuestionRepository, QuestionRepository>();
+			services.AddTransient<IQueueRepository, QueueRepository>();
 
 			// Scrapers
 			services.AddTransient<IScraper, GamepediaScraper>();
