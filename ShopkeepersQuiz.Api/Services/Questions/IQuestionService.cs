@@ -9,6 +9,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		/// <summary>
 		/// Gets the next few questions in the queue.
 		/// </summary>
-		public Task<IEnumerable<QueueEntry>> GetNextQuestions();
+		public Task<IEnumerable<QueueEntry>> GetQuestionQueue();
 	}
 }

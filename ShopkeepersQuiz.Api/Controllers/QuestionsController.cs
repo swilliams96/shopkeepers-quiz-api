@@ -18,7 +18,7 @@ namespace ShopkeepersQuiz.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetNextQuestions()
         {
-            return Ok(await _questionService.GetNextQuestions());
+            return Ok(await _questionService.GetQuestionQueue());
         }
     }
 }

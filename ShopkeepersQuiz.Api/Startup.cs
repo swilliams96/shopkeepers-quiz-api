@@ -31,6 +31,8 @@ namespace ShopkeepersQuiz.Api
 
 			services.AddDbContext<ApplicationDbContext>();
 
+			services.AddDistributedMemoryCache();	// TODO: swap this out for Redis in future
+
 			RegisterDependencyInjection(services);
 		}
 
