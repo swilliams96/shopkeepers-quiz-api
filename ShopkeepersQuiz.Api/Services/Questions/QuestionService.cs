@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using ShopkeepersQuiz.Api.Models.Cache;
@@ -6,6 +7,7 @@ using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Models.Queue;
 using ShopkeepersQuiz.Api.Repositories.Questions;
+using ShopkeepersQuiz.Api.Services.Queues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,15 +18,18 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 	public class QuestionService : IQuestionService
 	{
 		private readonly IQuestionRepository _questionRepository;
+		private readonly IQueueService _queueService;
 		private readonly QuestionSettings _questionSettings;
-		private readonly IDistributedCache _cache;
+		private readonly IMemoryCache _cache;
 
 		public QuestionService(
 			IQuestionRepository questionRepository,
+			IQueueService queueService,
 			IOptions<QuestionSettings> questionSettings,
-			IDistributedCache cache)
+			IMemoryCache cache)
 		{
 			_questionRepository = questionRepository;
+			_queueService = queueService;
 			_questionSettings = questionSettings.Value;
 			_cache = cache;
 		}
@@ -33,16 +38,18 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		{
 			int questionCount = _questionSettings.PreloadedQuestionsCount;
 
-			List<QueueEntry> questionQueue = (await GetQuestionQueueFromCache(questionCount)).ToList();
+			List<QueueEntry> questionQueue = GetQuestionQueueFromCache(questionCount).ToList();
 			if (questionQueue.Count >= questionCount)
 			{
 				return questionQueue;
 			}
 
+			// TODO: Check the database here before generating new questions
+
 			int newQuestions = await AddQuestionsToQuestionQueue(questionQueue, questionCount);
 			if (newQuestions > 0)
 			{
-				await _cache.SetStringAsync(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
+				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
 
 				// TODO: Add to the database so that correct answers can be revealed after the question has
 				// finished (and provide peristence after application restarts):
@@ -57,9 +64,9 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		/// Retrieves the existing question queue from the cache.
 		/// </summary>
 		/// <returns>A non-null <see cref="IEnumerable{QueueEntry}"/>.</returns>
-		private async Task<IEnumerable<QueueEntry>> GetQuestionQueueFromCache(int questionCount)
+		private IEnumerable<QueueEntry> GetQuestionQueueFromCache(int questionCount)
 		{
-			string questionQueueJson = await _cache.GetStringAsync(CacheKeys.QuestionQueue);
+			string questionQueueJson = _cache.Get<string>(CacheKeys.QuestionQueue);
 			if (string.IsNullOrWhiteSpace(questionQueueJson))
 			{
 				return Enumerable.Empty<QueueEntry>();

@@ -30,7 +30,7 @@ namespace ShopkeepersQuiz.Api
 
 			services.AddDbContext<ApplicationDbContext>();
 
-			services.AddDistributedMemoryCache();
+			services.AddMemoryCache();
 
 			RegisterDependencyInjection(services);
 		}
