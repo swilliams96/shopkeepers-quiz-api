@@ -1,16 +1,23 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Models.Queue;
+using System;
+using System.Linq;
 
 namespace ShopkeepersQuiz.Api.Repositories.Context
 {
 	public class ApplicationDbContext : DbContext
 	{
 		private readonly ConnectionStrings _connectionStrings;
+
+		private readonly ValueConverter<int[], string> _intArrayConverter = new ValueConverter<int[], string>(
+				array => string.Join(",", array),
+				str => str.Split(",", StringSplitOptions.RemoveEmptyEntries).Select(value => int.Parse(value)).ToArray());
 
 		public ApplicationDbContext(IOptions<ConnectionStrings> connectionStrings)
 		{
@@ -31,10 +38,15 @@ namespace ShopkeepersQuiz.Api.Repositories.Context
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
-			modelBuilder.Entity<QueueEntry>()
-				.HasOne(x => x.Question)
-				.WithMany()
-				.HasForeignKey(x => x.QuestionId);
+			modelBuilder.Entity<QueueEntry>(entry =>
+			{
+				entry.HasOne(x => x.Question)
+					.WithMany()
+					.HasForeignKey(x => x.QuestionId);
+
+				entry.Property(x => x.IncorrectAnswerIds)
+					.HasConversion(_intArrayConverter);
+			});
 
 			modelBuilder.Entity<Question>(question =>
 			{

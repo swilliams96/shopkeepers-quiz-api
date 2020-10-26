@@ -28,6 +28,8 @@ namespace ShopkeepersQuiz.Api.Models.Queue
 
 		public DateTime EndTimeUtc { get; set; }
 
+		public int[] IncorrectAnswerIds { get; set; }
+
 		// Navigation Properties
 
 		public Question Question { get; set; }
