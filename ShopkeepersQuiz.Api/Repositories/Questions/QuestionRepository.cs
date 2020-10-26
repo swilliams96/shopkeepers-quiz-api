@@ -20,6 +20,7 @@ namespace ShopkeepersQuiz.Api.Repositories.Questions
 		public async Task<IEnumerable<Question>> GetRandomQuestionsWithAnswers(int count)
 		{
 			return await _context.Questions
+				.Include(x => x.Ability)
 				.Include(x => x.Answers)
 				.OrderBy(x => Guid.NewGuid())
 				.Take(count)

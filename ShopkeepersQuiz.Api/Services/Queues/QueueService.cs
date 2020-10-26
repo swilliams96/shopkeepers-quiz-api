@@ -17,6 +17,8 @@ namespace ShopkeepersQuiz.Api.Services.Queues
 			_queueRepository = queueRepository;
 		}
 
+		public Task<IEnumerable<QueueEntry>> GetUpcomingQueueEntries() => _queueRepository.GetUpcomingQueueEntries();
+
 		public async Task UpdateQueue(IEnumerable<QueueEntry> questionQueue)
 		{
 			if (questionQueue == null || !questionQueue.Any())

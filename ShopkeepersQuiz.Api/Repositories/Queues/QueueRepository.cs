@@ -21,6 +21,8 @@ namespace ShopkeepersQuiz.Api.Repositories.Queues
 		public async Task<IEnumerable<QueueEntry>> GetUpcomingQueueEntries()
 		{
 			return await _context.QueueEntries
+				.Include(q => q.Question)
+					.ThenInclude(q => q.Ability)
 				.Where(x => x.StartTimeUtc >= DateTime.UtcNow)
 				.ToListAsync();
 		}
@@ -38,6 +40,7 @@ namespace ShopkeepersQuiz.Api.Repositories.Queues
 			}
 
 			await _context.QueueEntries.AddAsync(queueEntry);
+			await _context.SaveChangesAsync();
 
 			return queueEntry;
 		}

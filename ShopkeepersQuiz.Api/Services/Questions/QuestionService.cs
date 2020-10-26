@@ -44,17 +44,26 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 				return questionQueue;
 			}
 
-			// TODO: Check the database here before generating new questions
+			questionQueue = (await _queueService.GetUpcomingQueueEntries()).ToList();
+			if (questionQueue.Count >= questionCount)
+			{
+				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
+				return questionQueue;
+			}
 
 			int newQuestions = await AddQuestionsToQuestionQueue(questionQueue, questionCount);
 			if (newQuestions > 0)
 			{
 				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
 
-				// TODO: Add to the database so that correct answers can be revealed after the question has
-				// finished (and provide peristence after application restarts):
-
-				// _queueService.UpdateQueue(questionQueue);
+				try
+				{
+					await _queueService.UpdateQueue(questionQueue);
+				}
+				catch
+				{
+					_cache.Remove(CacheKeys.QuestionQueue);
+				}
 			}
 
 			return questionQueue;
@@ -112,7 +121,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 
 				IEnumerable<Question> extraQuestions = await _questionRepository.GetRandomQuestionsWithAnswers(questionCount);
 
-				extraQuestions = extraQuestions.Where(x => !existingQueue.Any(n => n.Question.Id == x.Id));
+				extraQuestions = extraQuestions.Where(x => !existingQueue.Any(n => n.QuestionId == x.Id));
 
 				foreach (var question in extraQuestions)
 				{
