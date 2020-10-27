@@ -26,6 +26,6 @@ namespace ShopkeepersQuiz.Api.Models.Questions
 
 		public ICollection<Answer> Answers { get; set; }
 
-		public Ability Ability { get; private set; }
+		public Ability Ability { get; set; }
 	}
 }
