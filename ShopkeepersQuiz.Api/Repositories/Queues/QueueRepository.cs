@@ -23,6 +23,8 @@ namespace ShopkeepersQuiz.Api.Repositories.Queues
 			return await _context.QueueEntries
 				.Include(q => q.Question)
 					.ThenInclude(q => q.Ability)
+				.Include(q => q.Question)
+					.ThenInclude(q => q.Answers)
 				.Where(x => x.StartTimeUtc >= DateTime.UtcNow)
 				.ToListAsync();
 		}

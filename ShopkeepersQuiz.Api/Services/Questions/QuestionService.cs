@@ -7,7 +7,7 @@ using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Models.Queue;
 using ShopkeepersQuiz.Api.Repositories.Questions;
-using ShopkeepersQuiz.Api.Services.Queues;
+using ShopkeepersQuiz.Api.Repositories.Queues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,18 +18,18 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 	public class QuestionService : IQuestionService
 	{
 		private readonly IQuestionRepository _questionRepository;
-		private readonly IQueueService _queueService;
+		private readonly IQueueRepository _queueRepository;
 		private readonly QuestionSettings _questionSettings;
 		private readonly IMemoryCache _cache;
 
 		public QuestionService(
 			IQuestionRepository questionRepository,
-			IQueueService queueService,
+			IQueueRepository queueRepository,
 			IOptions<QuestionSettings> questionSettings,
 			IMemoryCache cache)
 		{
 			_questionRepository = questionRepository;
-			_queueService = queueService;
+			_queueRepository = queueRepository;
 			_questionSettings = questionSettings.Value;
 			_cache = cache;
 		}
@@ -44,7 +44,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 				return questionQueue;
 			}
 
-			questionQueue = (await _queueService.GetUpcomingQueueEntries()).ToList();
+			questionQueue = (await _queueRepository.GetUpcomingQueueEntries()).ToList();
 			if (questionQueue.Count >= questionCount)
 			{
 				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
@@ -58,7 +58,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 
 				try
 				{
-					await _queueService.UpdateQueue(questionQueue);
+					await UpdateQueue(questionQueue);
 				}
 				catch
 				{
@@ -150,6 +150,28 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 			return overflow == 0
 				? afterDate.Value
 				: afterDate.Value.AddTicks(totalQuestionTime.Ticks - overflow);
+		}
+
+		/// <summary>
+		/// Stores any untracked queue entries from the provided queue in the database.
+		/// </summary>
+		private async Task UpdateQueue(IEnumerable<QueueEntry> questionQueue)
+		{
+			if (questionQueue == null || !questionQueue.Any())
+			{
+				throw new ArgumentNullException(nameof(questionQueue));
+			}
+
+			IEnumerable<QueueEntry> existingQueueEntries = await _queueRepository.GetUpcomingQueueEntries();
+
+			IEnumerable<QueueEntry> queueEntriesToAdd = questionQueue
+				.Where(x => x.StartTimeUtc >= DateTime.UtcNow)
+				.Where(x => !existingQueueEntries.Any(existing => x.Id == existing.Id));
+
+			foreach (var entry in queueEntriesToAdd)
+			{
+				await _queueRepository.CreateQueueEntry(entry);
+			}
 		}
 	}
 }
