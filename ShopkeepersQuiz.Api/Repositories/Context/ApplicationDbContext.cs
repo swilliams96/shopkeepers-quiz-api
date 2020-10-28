@@ -5,7 +5,7 @@ using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
-using ShopkeepersQuiz.Api.Models.Queue;
+using ShopkeepersQuiz.Api.Models.Queues;
 using System;
 using System.Linq;
 

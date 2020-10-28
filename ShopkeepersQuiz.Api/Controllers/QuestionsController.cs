@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ShopkeepersQuiz.Api.Mappers;
 using ShopkeepersQuiz.Api.Services.Questions;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Controllers
@@ -18,7 +20,8 @@ namespace ShopkeepersQuiz.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetNextQuestions()
         {
-            return Ok(await _questionService.GetQuestionQueue());
+            var result = await _questionService.GetQuestionQueue();
+            return Ok(result.Select(x => x.MapToDto()));
         }
     }
 }

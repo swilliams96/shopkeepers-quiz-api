@@ -1,4 +1,4 @@
-﻿using ShopkeepersQuiz.Api.Models.Queue;
+﻿using ShopkeepersQuiz.Api.Models.Queues;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

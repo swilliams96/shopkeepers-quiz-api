@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ShopkeepersQuiz.Api.Models.Messages;
-using ShopkeepersQuiz.Api.Models.Queue;
+using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using System;
 using System.Collections.Generic;

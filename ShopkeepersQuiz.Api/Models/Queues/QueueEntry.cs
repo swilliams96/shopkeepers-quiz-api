@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
-namespace ShopkeepersQuiz.Api.Models.Queue
+namespace ShopkeepersQuiz.Api.Models.Queues
 {
 	public class QueueEntry
 	{
@@ -27,7 +27,7 @@ namespace ShopkeepersQuiz.Api.Models.Queue
 		[JsonConstructor]
 		private QueueEntry()
 		{
-			// Necessary for EF Core
+			// Necessary for EF Core and Newtonsoft
 		}
 
 		[Key]
@@ -57,7 +57,7 @@ namespace ShopkeepersQuiz.Api.Models.Queue
 
 		[NotMapped]
 		[JsonIgnore]
-		public IEnumerable<Answer> AllAnswers => Enumerable.Append(IncorrectAnswers, CorrectAnswer);
+		public IEnumerable<Answer> AllAnswers => IncorrectAnswers.Append(CorrectAnswer);
 
 		/// <summary>
 		/// Picks out some incorrect answers from the supplied <see cref="Question"/> to use as the incorrect options.

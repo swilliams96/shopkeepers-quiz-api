@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using ShopkeepersQuiz.Api.Models.Cache;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Questions;
-using ShopkeepersQuiz.Api.Models.Queue;
+using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Repositories.Queues;
 using System;
