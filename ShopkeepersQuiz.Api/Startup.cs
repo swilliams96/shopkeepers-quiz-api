@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Questions;
@@ -11,6 +12,8 @@ using ShopkeepersQuiz.Api.Repositories.Queues;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
+using System;
+using System.Linq;
 
 namespace ShopkeepersQuiz.Api
 {
@@ -39,6 +42,11 @@ namespace ShopkeepersQuiz.Api
 			if (env.IsDevelopment())
 			{
 				app.UseDeveloperExceptionPage();
+
+				Log.Logger.Information("Environment variables:" 
+					+ Environment.NewLine 
+					+ string.Join(Environment.NewLine + "\t", Configuration.AsEnumerable().Select(x => x.Key + ": " + x.Value))
+					+ Environment.NewLine);
 			}
 
 			app.UseHttpsRedirection();

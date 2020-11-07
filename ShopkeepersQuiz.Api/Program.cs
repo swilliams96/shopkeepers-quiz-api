@@ -5,35 +5,33 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using ShopkeepersQuiz.Api.BackgroundServices;
 using System;
-using System.IO;
-using System.Reflection;
 
 namespace ShopkeepersQuiz.Api
 {
 	public class Program
 	{
-		public static IConfiguration Configuration { get; } = new ConfigurationBuilder()
-			.SetBasePath(Directory.GetCurrentDirectory())
-			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-			.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production" }.json", optional: true)
-			.AddEnvironmentVariables("ShopkeepersQuizApi_")
-			.Build();
-
-		public static readonly string ApplicationName = Configuration.GetValue("Name", "Shopkeeper's Quiz API");
-
-		public static readonly string ApplicationVersion = Configuration.GetValue("Version", "0.0.0");
-
 		public static void Main(string[] args)
 		{
+			string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+
+			IConfiguration loggerConfig = new ConfigurationBuilder()
+				.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+				.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+				.AddEnvironmentVariables()
+				.Build();
+
+			string appName = loggerConfig.GetValue<string>("ApplicationName") ?? "Shopkeeper's Quiz";
+			string appVersion = loggerConfig.GetValue<string>("ApplicationVersion") ?? "0.0.0";
+
 			Log.Logger = new LoggerConfiguration()
-				.ReadFrom.Configuration(Configuration)
+				.ReadFrom.Configuration(loggerConfig)
 				.Enrich.FromLogContext()
-				.Enrich.WithProperty(nameof(ApplicationVersion), ApplicationVersion)
+				.Enrich.WithProperty("ApplicationVersion", appVersion)
 				.CreateLogger();
 
 			try
 			{
-				Log.Information($"Starting {ApplicationName} v{ApplicationVersion}...");
+				Log.Information($"Starting {appName} v{appVersion}");
 
 				CreateHostBuilder(args).Build().Run();
 			}
@@ -51,7 +49,6 @@ namespace ShopkeepersQuiz.Api
 
 		public static IHostBuilder CreateHostBuilder(string[] args) =>
 			Host.CreateDefaultBuilder(args)
-				.UseSerilog()
 				.ConfigureWebHostDefaults(webBuilder =>
 				{
 					webBuilder.UseStartup<Startup>();
@@ -59,6 +56,7 @@ namespace ShopkeepersQuiz.Api
 				.ConfigureServices(services =>
 				{
 					services.AddHostedService<WebScraperBackgroundService>();
-				});
-		}
+				})
+				.UseSerilog();
+	}
 }

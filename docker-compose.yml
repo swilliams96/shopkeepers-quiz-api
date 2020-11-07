@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  api:
+    container_name: shopkeepers-quiz-api
+    build: .
+    ports:
+      - "5555:80"
+    environment:
+      Serilog__MinimumLevel: "Debug"
+      QuestionSettings__PreloadedQuestionsCount: 5
+      QuestionSettings__QuestionTimeSeconds: 10
+      QuestionSettings__AnswerTimeSeconds: 5
+      QuestionSettings__IncorrectAnswersGenerated: 5
+      ScraperSettings__RunEvery: "0 4 ? * THU"
+      ConnectionStrings__ApplicationDatabase: "Server=database,1433;Database=ShopkeepersQuiz;User Id=sa;Password=SeCR3T_P@55w0rD;"
+    depends_on:
+      - database
+
+  database:
+    container_name: shopkeepers-quiz-db
+    image: "mcr.microsoft.com/mssql/server"
+    ports: 
+      - "11433:1433"
+    environment:
+      SA_PASSWORD: "SeCR3T_P@55w0rD"
+      ACCEPT_EULA: "Y"
