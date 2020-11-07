@@ -55,8 +55,8 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		{
 			_cronExpression = CronExpression.Parse(_scraperSettings.RunEvery);
 
-			// Every 60 seconds check if the scrapers should run again and run them if necessary.
-			_timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+			// Every 10 seconds check if the scrapers should run again and run them if necessary.
+			_timer = new Timer(DoWorkIfScheduled, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
 
 			return Task.CompletedTask;
 		}
@@ -75,7 +75,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		/// <summary>
 		/// Callback for the <see cref="Timer"/> to run the scrapers if the <see cref="_nextRunTimeUtc"/> has passed.
 		/// </summary>
-		private void DoWork(object state)
+		private void DoWorkIfScheduled(object state)
 		{
 			if (_nextRunTimeUtc <= DateTime.UtcNow)
 			{
