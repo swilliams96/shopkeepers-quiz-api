@@ -13,6 +13,10 @@ using System.Web;
 
 namespace ShopkeepersQuiz.Api.Services.Scrapers
 {
+	/// <summary>
+	/// Retrieves Hero and Ability data from the Dota 2 Gamepedia wiki (https://dota2.gamepedia.com/), which allows use of its 
+	/// data under the CC BY-NC-SA 3.0 licence (https://creativecommons.org/licenses/by-sa/3.0/).
+	/// </summary>
 	public class GamepediaScraper : IScraper
 	{
 		const string BaseUrl = @"https://dota2.gamepedia.com";
