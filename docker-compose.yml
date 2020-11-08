@@ -6,21 +6,44 @@ services:
     ports:
       - "5555:80"
     environment:
-      Serilog__MinimumLevel: "Debug"
+      ASPNETCORE_ENVIRONMENT: "Development"
       QuestionSettings__PreloadedQuestionsCount: 5
       QuestionSettings__QuestionTimeSeconds: 10
       QuestionSettings__AnswerTimeSeconds: 5
       QuestionSettings__IncorrectAnswersGenerated: 5
       ScraperSettings__RunEvery: "0 4 ? * THU"
       ConnectionStrings__ApplicationDatabase: "Server=database,1433;Database=ShopkeepersQuiz;User Id=sa;Password=SeCR3T_P@55w0rD;"
+      Serilog__MinimumLevel: "Information"
+      Serilog__Using__1: "Serilog.Sinks.Seq"
+      Serilog__WriteTo__1__Name: "Seq"
+      Serilog__WriteTo__1__Args__serverUrl: "http://seq:80"
     depends_on:
       - database
+      - seq
 
   database:
     container_name: shopkeepers-quiz-db
     image: "mcr.microsoft.com/mssql/server"
-    ports: 
+    user: root
+    ports:
       - "11433:1433"
+    volumes:
+      - "db-data:/var/opt/mssql"
     environment:
       SA_PASSWORD: "SeCR3T_P@55w0rD"
       ACCEPT_EULA: "Y"
+
+  seq:
+    container_name: shopkeepers-quiz-logs
+    image: "datalust/seq:latest"
+    ports:
+      - 5341:80
+    volumes:
+      - "seq-data:/data"
+    environment:
+      ACCEPT_EULA: "Y"
+
+volumes:
+  db-data:
+  seq-data:
+  

@@ -43,13 +43,11 @@ namespace ShopkeepersQuiz.Api
 			{
 				app.UseDeveloperExceptionPage();
 
-				Log.Logger.Information("Environment variables:" 
+				Log.Logger.Debug("Environment variables:" 
 					+ Environment.NewLine 
 					+ string.Join(Environment.NewLine + "\t", Configuration.AsEnumerable().Select(x => x.Key + ": " + x.Value))
 					+ Environment.NewLine);
 			}
-
-			app.UseHttpsRedirection();
 
 			app.UseRouting();
 
@@ -59,6 +57,8 @@ namespace ShopkeepersQuiz.Api
 			{
 				endpoints.MapControllers();
 			});
+
+			app.UseSerilogRequestLogging();
 
 			EnsureDatabaseMigrated(app);
 		}
