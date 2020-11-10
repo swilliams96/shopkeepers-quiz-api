@@ -1,0 +1,44 @@
+name: CI Build
+
+on:
+  create:
+    branches: 
+      - release/[0-9]+.[0-9]+.[0-9]+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Extract release version
+      shell: bash
+      run: |
+        [[ ${GITHUB_REF#refs/heads/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
+        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_version
+
+    - uses: microsoft/variable-substitution@v1 
+      with:
+        files: 'appsettings.json'
+      env:
+        Version: ${{ steps.extract_version.outputs.version }}
+
+    - name: Build & publish docker image
+      uses: matootie/github-docker@v3.1.0
+      with:
+        accessToken: ${{ secrets.GITHUB_TOKEN  }}
+        imageName: "shopkeepers-quiz-api"
+        tag: |
+          latest
+          ${{ steps.extract_version.outputs.version }}
+        containerRegistry: true
+
+    - name: Create a GitHub release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.extract_version.outputs.version }}
+        release_name: v${{ steps.extract_version.outputs.version }}
