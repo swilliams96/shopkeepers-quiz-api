@@ -13,7 +13,9 @@ using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
 using System;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace ShopkeepersQuiz.Api
 {
@@ -34,11 +36,21 @@ namespace ShopkeepersQuiz.Api
 
 			services.AddMemoryCache();
 
+			services.AddSwaggerGen(config =>
+			{
+				var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+				var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+				config.IncludeXmlComments(xmlPath);
+			});
+
 			RegisterDependencyInjection(services);
 		}
 
 		public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 		{
+			string appName = Configuration.GetValue("Name", "Shopkeeper's Quiz API");
+			string appVersion = Configuration.GetValue("Version", "0.0.0");
+
 			if (env.IsDevelopment())
 			{
 				app.UseDeveloperExceptionPage();
@@ -57,6 +69,14 @@ namespace ShopkeepersQuiz.Api
 			{
 				endpoints.MapControllers();
 			});
+
+			app.UseSwagger();
+			app.UseSwaggerUI(config =>
+			{
+				config.SwaggerEndpoint("/swagger/v1/swagger.json", $"{appName} v{appVersion}");
+				config.RoutePrefix = string.Empty;
+			});
+
 
 			app.UseSerilogRequestLogging();
 
