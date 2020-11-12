@@ -2,6 +2,11 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using OneOf;
+using OneOf.Types;
+using ShopkeepersQuiz.Api.Dtos;
+using ShopkeepersQuiz.Api.Mappers;
+using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Cache;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Questions;
@@ -48,25 +53,54 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 			if (questionQueue.Count >= questionCount)
 			{
 				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
-				return questionQueue;
+			}
+			else
+			{
+				int newQuestions = await AddQuestionsToQuestionQueue(questionQueue, questionCount);
+				if (newQuestions > 0)
+				{
+					_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
+
+					try
+					{
+						await UpdateQueue(questionQueue);
+					}
+					catch
+					{
+						_cache.Remove(CacheKeys.QuestionQueue);
+					}
+				}
 			}
 
-			int newQuestions = await AddQuestionsToQuestionQueue(questionQueue, questionCount);
-			if (newQuestions > 0)
+			// Store the correct answers in the cache for when the timer runs out and the answer should be revealed
+			foreach (var queueEntry in questionQueue)
 			{
-				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
+				string cacheKey = CacheKeys.PreviousQueueEntry(queueEntry.Id);
+				DateTimeOffset cacheDuration = DateTime.UtcNow.AddSeconds((double)_questionSettings.QuestionTimeSeconds * 10);
 
-				try
-				{
-					await UpdateQueue(questionQueue);
-				}
-				catch
-				{
-					_cache.Remove(CacheKeys.QuestionQueue);
-				}
+				_cache.Set(cacheKey, queueEntry, cacheDuration);
 			}
 
 			return questionQueue;
+		}
+
+		public OneOf<AnswerDto, NotFound, AnswerNotAvailableYet> GetPreviousQueueEntryAnswer(Guid queueEntryId)
+		{
+			string answerCacheKey = CacheKeys.PreviousQueueEntry(queueEntryId);
+			if (_cache.TryGetValue(answerCacheKey, out QueueEntry entry))
+			{
+				// Allow a grace period of 2 seconds in case client/server clocks differ
+				if (entry.EndTimeUtc.AddSeconds(-2) < DateTime.UtcNow)
+				{
+					return entry.CorrectAnswer.MapToDto();
+				}
+				else
+				{
+					return new AnswerNotAvailableYet();
+				}
+			}
+
+			return new NotFound();
 		}
 
 		/// <summary>

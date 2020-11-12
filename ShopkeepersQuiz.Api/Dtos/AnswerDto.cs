@@ -1,4 +1,4 @@
-﻿namespace ShopkeepersQuiz.Api.Dtos.Queues
+﻿namespace ShopkeepersQuiz.Api.Dtos
 {
 	public class AnswerDto
 	{
