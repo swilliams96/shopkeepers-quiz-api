@@ -76,9 +76,9 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 			foreach (var queueEntry in questionQueue)
 			{
 				string cacheKey = CacheKeys.PreviousQueueEntry(queueEntry.Id);
-				DateTimeOffset cacheDuration = DateTime.UtcNow.AddSeconds((double)_questionSettings.QuestionTimeSeconds * 10);
+				DateTimeOffset cacheExpiry = queueEntry.EndTimeUtc.AddSeconds((double)_questionSettings.QuestionTimeSeconds * 5);
 
-				_cache.Set(cacheKey, queueEntry, cacheDuration);
+				_cache.Set(cacheKey, queueEntry, cacheExpiry);
 			}
 
 			return questionQueue;
