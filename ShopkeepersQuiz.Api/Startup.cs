@@ -32,6 +32,8 @@ namespace ShopkeepersQuiz.Api
 		{
 			services.AddControllers();
 
+			services.AddRouting(config => config.LowercaseUrls = true);
+
 			services.AddDbContext<ApplicationDbContext>();
 
 			services.AddMemoryCache();
