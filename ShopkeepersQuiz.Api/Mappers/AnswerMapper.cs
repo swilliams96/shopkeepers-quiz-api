@@ -1,4 +1,4 @@
-﻿using ShopkeepersQuiz.Api.Dtos.Queues;
+﻿using ShopkeepersQuiz.Api.Dtos;
 using ShopkeepersQuiz.Api.Models.Answers;
 
 namespace ShopkeepersQuiz.Api.Mappers
