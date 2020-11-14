@@ -8,6 +8,10 @@ namespace ShopkeepersQuiz.Api.Dtos.Queues
 	{
 		public Guid Id { get; set; }
 
+		public DateTime StartTimeUtc { get; set; }
+
+		public DateTime EndTimeUtc { get; set; }
+
 		public string Key { get; set; }
 
 		public QuestionType Type { get; set; }

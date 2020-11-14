@@ -24,6 +24,8 @@ namespace ShopkeepersQuiz.Api.Mappers
 			return new QueueEntryDto()
 			{
 				Id = entity.Id,
+				StartTimeUtc = entity.StartTimeUtc,
+				EndTimeUtc = entity.EndTimeUtc,
 				Key = entity.Question.Key,
 				Type = entity.Question.Type,
 				Question = entity.Question.Text,
