@@ -55,7 +55,7 @@ namespace ShopkeepersQuiz.Api
 				})
 				.ConfigureServices(services =>
 				{
-					services.AddHostedService<WebScraperBackgroundService>();
+					services.AddHostedService<QuestionDataBackgroundService>();
 				})
 				.UseSerilog();
 	}

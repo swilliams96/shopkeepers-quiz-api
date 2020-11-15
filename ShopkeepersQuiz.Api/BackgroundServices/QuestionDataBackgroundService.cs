@@ -15,7 +15,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 	/// <summary>
 	/// Hosted background service for running the webscrapers on a configured time interval.
 	/// </summary>
-	public class WebScraperBackgroundService : IHostedService, IDisposable
+	public class QuestionDataBackgroundService : IHostedService, IDisposable
 	{
 		private readonly ScraperSettings _scraperSettings;
 		private readonly IEnumerable<IScraper> _scrapers;
@@ -41,7 +41,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		/// </summary>
 		private bool _currentlyRunning = false;
 
-		public WebScraperBackgroundService(
+		public QuestionDataBackgroundService(
 			IOptions<ScraperSettings> scraperSettings,
 			IEnumerable<IScraper> scrapers,
 			IServiceScopeFactory serviceScopeFactory)
@@ -109,8 +109,14 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 					await scraper.RunScraper(scope);
 				}
 
-				Console.WriteLine("Generating questions...");
-				await scope.ServiceProvider.GetRequiredService<IQuestionGenerator>().GenerateQuestions();
+				IEnumerable<IQuestionGenerator> questionGenerators = scope.ServiceProvider.GetServices<IQuestionGenerator>();
+
+				foreach (var generator in questionGenerators)
+				{
+					Console.WriteLine($"Generating questions using ${generator.GetType().Name}...");
+					await generator.GenerateQuestions();
+				}
+
 			}
 			catch (Exception ex)
 			{
@@ -119,7 +125,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			finally
 			{
 				_currentlyRunning = false;
-				Console.WriteLine("Background tasks complete!");
+				Console.WriteLine("Background task complete!");
 			}
 		}
 	}
