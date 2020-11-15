@@ -13,13 +13,13 @@ using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 {
-	public class QuestionGenerationService : IQuestionGenerationService
+	public class CooldownQuestionGenerator : IQuestionGenerator
 	{
 		private readonly ApplicationDbContext _context;
 		private readonly QuestionSettings _questionSettings;
 		private readonly Random _random = new Random();
 
-		public QuestionGenerationService(ApplicationDbContext context, IOptions<QuestionSettings> questionSettings)
+		public CooldownQuestionGenerator(ApplicationDbContext context, IOptions<QuestionSettings> questionSettings)
 		{
 			_context = context;
 			_questionSettings = questionSettings.Value;

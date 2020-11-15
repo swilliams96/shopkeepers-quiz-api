@@ -110,7 +110,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 				}
 
 				Console.WriteLine("Generating questions...");
-				await scope.ServiceProvider.GetRequiredService<IQuestionGenerationService>().GenerateQuestions();
+				await scope.ServiceProvider.GetRequiredService<IQuestionGenerator>().GenerateQuestions();
 			}
 			catch (Exception ex)
 			{
