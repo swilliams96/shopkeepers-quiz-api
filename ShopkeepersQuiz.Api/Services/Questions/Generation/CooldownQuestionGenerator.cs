@@ -41,7 +41,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 
 				if (abilityQuestions.Any())
 				{
-					foreach (Question question in abilityQuestions)
+					foreach (Question question in abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown))
 					{
 						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
 						if (correctAnswer == null)
@@ -50,16 +50,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 							continue;
 						}
 
-						switch (question.Type)
-						{
-							case QuestionType.AbilityCooldown:
-								RegenerateCooldownQuestionIfOutdated(question, ability);
-								break;
-
-							default:
-								Console.WriteLine($"Unexpected question type of '{question.Type}' linked to ability {ability.Name} ({ability.Id}).");
-								break;
-						}
+						RegenerateCooldownQuestionIfOutdated(question, ability);
 					}
 				}
 				else
