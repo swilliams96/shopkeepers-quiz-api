@@ -5,6 +5,7 @@ using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,23 +18,20 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 	{
 		private readonly ApplicationDbContext _context;
 		private readonly QuestionSettings _questionSettings;
+		private readonly RandomHelper _randomHelper;
 		private readonly Random _random = new Random();
 
-		public CooldownQuestionGenerator(ApplicationDbContext context, IOptions<QuestionSettings> questionSettings)
+		public CooldownQuestionGenerator(
+			ApplicationDbContext context,
+			IOptions<QuestionSettings> questionSettings,
+			RandomHelper randomHelper)
 		{
 			_context = context;
 			_questionSettings = questionSettings.Value;
+			_randomHelper = randomHelper;
 		}
 
 		public async Task GenerateQuestions()
-		{
-			await GenerateAbilityQuestions();
-		}
-
-		/// <summary>
-		/// Generates the <see cref="Ability"/>-based questions for the app.
-		/// </summary>
-		private async Task GenerateAbilityQuestions()
 		{
 			IEnumerable<Ability> abilities = await _context.Abilities.Include(x => x.Hero).ToListAsync();
 
@@ -157,6 +155,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// Generates a new incorrect answer for the cooldown of the given <see cref="Ability"/>.
 		/// </summary>
 		/// <param name="ability">The <see cref="Ability"/> to generate an incorrect cooldown for.</param>
+		/// <param name="question">The <see cref="Question"/> that the answer will belong to.</param>
 		/// <param name="slashes">The number of forward slashes the incorrect cooldown should contain.</param>
 		private Answer GenerateIncorrectCooldownAnswer(Ability ability, Question question, int slashes)
 		{
@@ -197,12 +196,12 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 
 				int startingValueJitter = (int)minimumValue switch
 				{
-					int val when minimumValue <= 5 => ChooseRandomNumberBetween(-1 * val, 6),
-					_ when minimumValue <= 12 => ChooseRandomNumberBetween(-3, 8),
-					_ when minimumValue <= 20 => ChooseRandomNumberBetween(-7, 10),
-					_ when minimumValue <= 40 => ChooseRandomNumberBetween(-10, 12),
-					_ when minimumValue <= 80 => ChooseRandomNumberBetween(-15, 20),
-					_ => ChooseRandomNumberBetween(-20, 25)
+					int val when minimumValue <= 5 => _randomHelper.ChooseRandomNumberBetween(-1 * val, 6),
+					_ when minimumValue <= 12 => _randomHelper.ChooseRandomNumberBetween(-3, 8),
+					_ when minimumValue <= 20 => _randomHelper.ChooseRandomNumberBetween(-7, 10),
+					_ when minimumValue <= 40 => _randomHelper.ChooseRandomNumberBetween(-10, 12),
+					_ when minimumValue <= 80 => _randomHelper.ChooseRandomNumberBetween(-15, 20),
+					_ => _randomHelper.ChooseRandomNumberBetween(-20, 25)
 				};
 
 				decimal startingValue = minimumValue + startingValueJitter;
@@ -218,18 +217,18 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 
 					int interval = startingValue switch
 					{
-						_ when minimumValue <= 5 => ChooseRandomOption(1, 1, 1, 2, 2, 3, 4, 5),
-						_ when minimumValue <= 15 => ChooseRandomOption(1, 1, 2, 2, 3, 4, 4, 5, 8, 10),
-						_ when minimumValue <= 30 => ChooseRandomOption(1, 2, 2, 3, 4, 5, 6, 8, 10, 12),
-						_ when minimumValue <= 60 && (slashes == 2 || valueDifference > 25) => ChooseRandomOption(8, 10, 12, 15, 20, 25, 30, 35, 40, 45),
-						_ when minimumValue <= 60 => ChooseRandomOption(2, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30),
-						_ when minimumValue <= 60 => ChooseRandomOption(1, 5),
-						_ when minimumValue <= 60 => ChooseRandomOption(1, 5),
-						_ when minimumValue <= 60 => ChooseRandomOption(1, 5),
-						_ when minimumValue <= 60 => ChooseRandomOption(1, 5),
-						_ when minimumValue % 5 != 0 || maximumValue % 5 != 0 => ChooseRandomOption(2, 4, 5, 6, 8, 10, 10, 12, 15, 16, 20, 20, 25, 30, 40),
-						_ when valueDifference < slashes * 10 => ChooseRandomOption(5, 5, 10, 10, 15, 15, 20, 25, 30),
-						_ => ChooseRandomOption(5, 10, 10, 10, 15, 15, 20, 20, 20, 25, 25, 30, 30, 40, 50)
+						_ when minimumValue <= 5 => _randomHelper.ChooseRandomOption(1, 1, 1, 2, 2, 3, 4, 5),
+						_ when minimumValue <= 15 => _randomHelper.ChooseRandomOption(1, 1, 2, 2, 3, 4, 4, 5, 8, 10),
+						_ when minimumValue <= 30 => _randomHelper.ChooseRandomOption(1, 2, 2, 3, 4, 5, 6, 8, 10, 12),
+						_ when minimumValue <= 60 && (slashes == 2 || valueDifference > 25) => _randomHelper.ChooseRandomOption(8, 10, 12, 15, 20, 25, 30, 35, 40, 45),
+						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(2, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30),
+						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
+						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
+						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
+						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
+						_ when minimumValue % 5 != 0 || maximumValue % 5 != 0 => _randomHelper.ChooseRandomOption(2, 4, 5, 6, 8, 10, 10, 12, 15, 16, 20, 20, 25, 30, 40),
+						_ when valueDifference < slashes * 10 => _randomHelper.ChooseRandomOption(5, 5, 10, 10, 15, 15, 20, 25, 30),
+						_ => _randomHelper.ChooseRandomOption(5, 10, 10, 10, 15, 15, 20, 20, 20, 25, 25, 30, 30, 40, 50)
 					};
 
 					var values = new List<decimal>();
@@ -277,36 +276,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				.Include(x => x.Answers)
 				.Where(x => x.AbilityId == abilityId)
 				.ToListAsync();
-		}
-
-		/// <summary>
-		/// Chooses a random option from the given set of options and returns it.
-		/// </summary>
-		/// <param name="options">The options to choose from.</param>
-		/// <returns>One option at random.</returns>
-		private T ChooseRandomOption<T>(params T[] options)
-		{
-			if (!options?.Any() ?? true)
-			{
-				throw new ArgumentNullException(nameof(options), "At least one option must be provided.");
-			}
-
-			return options.OrderBy(x => Guid.NewGuid()).First();
-		}
-
-		/// <summary>
-		/// Chooses a random number between the given min and max numbers.
-		/// </summary>
-		/// <param name="options">The options to choose from.</param>
-		/// <returns>One option at random.</returns>
-		private int ChooseRandomNumberBetween(int min, int max)
-		{
-			if (min > max)
-			{
-				throw new ArgumentException("The minimum vale cannot be greater than the maximum value.");
-			}
-
-			return ChooseRandomOption(Enumerable.Range(min, max - min).ToArray());
 		}
 	}
 }
