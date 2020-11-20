@@ -7,10 +7,11 @@ namespace ShopkeepersQuiz.Api.Utilities
 	{
 		/// <summary>
 		/// Chooses a random option from the given set of options and returns it.
+		/// Useful for choosing from a range of options with uneven weightings if the same option is repeated in options list.
 		/// </summary>
 		/// <param name="options">The options to choose from.</param>
 		/// <returns>One option at random.</returns>
-		public T ChooseRandomOption<T>(params T[] options)
+		public T ChooseRandomOption<T>(params T[] options) where T : struct
 		{
 			if (!options?.Any() ?? true)
 			{

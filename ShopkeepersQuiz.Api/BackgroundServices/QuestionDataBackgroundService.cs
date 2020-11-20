@@ -1,4 +1,4 @@
-﻿using Cronos;
+using Cronos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -117,7 +117,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 				IEnumerable<IQuestionGenerator> questionGenerators = scope.ServiceProvider.GetServices<IQuestionGenerator>();
 				foreach (var generator in questionGenerators)
 				{
-					_logger.Information($"Generating questions using ${generator.GetType().Name}...");
+					_logger.Information($"Generating questions using {generator.GetType().Name}...");
 					await generator.GenerateQuestions();
 				}
 

@@ -12,6 +12,7 @@ using ShopkeepersQuiz.Api.Repositories.Queues;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
+using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.IO;
 using System.Linq;
@@ -44,6 +45,8 @@ namespace ShopkeepersQuiz.Api
 				var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 				config.IncludeXmlComments(xmlPath);
 			});
+
+			services.AddSingleton(Log.Logger);
 
 			RegisterDependencyInjection(services);
 		}
@@ -112,11 +115,15 @@ namespace ShopkeepersQuiz.Api
 			services.AddTransient<IQuestionRepository, QuestionRepository>();
 			services.AddTransient<IQueueRepository, QueueRepository>();
 
+			// App Utilities
+			services.AddSingleton<RandomHelper>();
+
 			// Scrapers
 			services.AddTransient<IScraper, GamepediaScraper>();
 
 			// Question Generators
 			services.AddScoped<IQuestionGenerator, CooldownQuestionGenerator>();
+			services.AddScoped<IQuestionGenerator, ManaCostQuestionGenerator>();
 		}
 	}
 }

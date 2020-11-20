@@ -38,10 +38,11 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			foreach (Ability ability in abilities)
 			{
 				IEnumerable<Question> abilityQuestions = await GetQuestionsForAbility(ability.Id);
+				IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
 
 				if (abilityQuestions.Any())
 				{
-					foreach (Question question in abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown))
+					foreach (Question question in cooldownQuestionsForAbility)
 					{
 						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
 						if (correctAnswer == null)
@@ -63,8 +64,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		}
 
 		/// <summary>
-		/// Regenerates the <see cref="Question"/> and the <see cref="Answer"/>s if the correct <see cref="Answer"/> is
-		/// no longer the same.
+		/// Regenerates the <see cref="Question"/> and the <see cref="Answer"/>s if the correct <see cref="Answer"/> is no longer the same.
 		/// </summary>
 		private void RegenerateCooldownQuestionIfOutdated(Question question, Ability ability)
 		{
@@ -185,7 +185,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 					maximumValue *= 10;
 				}
 
-				int startingValueJitter = (int)minimumValue switch
+				int startingValueOffset = (int)minimumValue switch
 				{
 					int val when minimumValue <= 5 => _randomHelper.ChooseRandomNumberBetween(-1 * val, 6),
 					_ when minimumValue <= 12 => _randomHelper.ChooseRandomNumberBetween(-3, 8),
@@ -195,7 +195,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 					_ => _randomHelper.ChooseRandomNumberBetween(-20, 25)
 				};
 
-				decimal startingValue = minimumValue + startingValueJitter;
+				decimal startingValue = minimumValue + startingValueOffset;
 				string answerText;
 
 				if (slashes == 0)
@@ -213,9 +213,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 						_ when minimumValue <= 30 => _randomHelper.ChooseRandomOption(1, 2, 2, 3, 4, 5, 6, 8, 10, 12),
 						_ when minimumValue <= 60 && (slashes == 2 || valueDifference > 25) => _randomHelper.ChooseRandomOption(8, 10, 12, 15, 20, 25, 30, 35, 40, 45),
 						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(2, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30),
-						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
-						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
-						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
 						_ when minimumValue <= 60 => _randomHelper.ChooseRandomOption(1, 5),
 						_ when minimumValue % 5 != 0 || maximumValue % 5 != 0 => _randomHelper.ChooseRandomOption(2, 4, 5, 6, 8, 10, 10, 12, 15, 16, 20, 20, 25, 30, 40),
 						_ when valueDifference < slashes * 10 => _randomHelper.ChooseRandomOption(5, 5, 10, 10, 15, 15, 20, 25, 30),
