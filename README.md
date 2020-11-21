@@ -9,11 +9,11 @@ The API picks a handful of questions at random from the database and stores them
 
 The in-game data is retrieved by classes that implement the `IScraper` interface. These classes are in control of where and how they retrieve the data necessary to generate questions from. These implementations may request data from a free public API, scrape data from a wiki, or retrieve it via any other available means (*though if you wish to do any web scraping, please ensure that you [do so ethically](https://towardsdatascience.com/ethics-in-web-scraping-b96b18136f01#5ab1:~:text=The%20Ethical%20Scraper)*). The data is automatically refreshed on a recurring schedule to ensure that the questions remain accurate even after the game is updated.
 
-Once the data is stored in the database, the `QuestionsGenerationService` will generate a number of available questions along with the correct answer and a handful of convincing incorrect answers from the data. These are then stored in the database to be served up later by the API.
+Once the data is stored in the database, each of the `IQuestionGenerator`s will create a number of questions along with the correct answer and a handful of convincing incorrect answers from the available data. These are then stored in the database to be randomly served up later by the API.
 
 
 ## Contributing
-All contributions are welcome, whether you've noticed a bug or an issue, or want to add a new type of question. Either open an issue and describe what the problem is, or start a pull request and ensure that all tests pass.
+All contributions are welcome, whether you've noticed a bug or an issue, or want to add a new type of question. Either open an issue and describe what the problem is, or start a pull request and ensure that all tests pass. However, for larger changes I'd recommend that you [create an issue](https://github.com/swilliams96/shopkeepers-quiz-api/issues/new) before starting work on a fork for a pull request, so that there can be some discussion around the change and its feasibility and implementation.
 
 
 ## Copyright

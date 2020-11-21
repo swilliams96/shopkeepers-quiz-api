@@ -1,7 +1,8 @@
-﻿using Cronos;
+using Cronos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Serilog;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
@@ -15,10 +16,11 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 	/// <summary>
 	/// Hosted background service for running the webscrapers on a configured time interval.
 	/// </summary>
-	public class WebScraperBackgroundService : IHostedService, IDisposable
+	public class QuestionDataBackgroundService : IHostedService, IDisposable
 	{
 		private readonly ScraperSettings _scraperSettings;
 		private readonly IEnumerable<IScraper> _scrapers;
+		private readonly ILogger _logger;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 
 		/// <summary>
@@ -41,13 +43,15 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		/// </summary>
 		private bool _currentlyRunning = false;
 
-		public WebScraperBackgroundService(
+		public QuestionDataBackgroundService(
 			IOptions<ScraperSettings> scraperSettings,
 			IEnumerable<IScraper> scrapers,
+			ILogger logger,
 			IServiceScopeFactory serviceScopeFactory)
 		{
 			_scraperSettings = scraperSettings.Value;
 			_scrapers = scrapers;
+			_logger = logger.ForContext<QuestionDataBackgroundService>();
 			_serviceScopeFactory = serviceScopeFactory;
 		}
 
@@ -81,7 +85,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			{
 				if (_currentlyRunning)
 				{
-					Console.WriteLine("Scrapers are already running! Skipping this run...");
+					_logger.Debug("Scrapers are already running! Skipping this run...");
 				}
 				else
 				{
@@ -98,6 +102,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		private async Task RunScrapers()
 		{
 			_currentlyRunning = true;
+			_logger.Information("Starting background service run...");
 
 			using var scope = _serviceScopeFactory.CreateScope();
 
@@ -105,21 +110,26 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			{
 				foreach (var scraper in _scrapers)
 				{
-					Console.WriteLine($"Running {scraper.GetType().Name}...");
+					_logger.Information($"Running {scraper.GetType().Name}...");
 					await scraper.RunScraper(scope);
 				}
 
-				Console.WriteLine("Generating questions...");
-				await scope.ServiceProvider.GetRequiredService<IQuestionGenerationService>().GenerateQuestions();
+				IEnumerable<IQuestionGenerator> questionGenerators = scope.ServiceProvider.GetServices<IQuestionGenerator>();
+				foreach (var generator in questionGenerators)
+				{
+					_logger.Information($"Generating questions using {generator.GetType().Name}...");
+					await generator.GenerateQuestions();
+				}
+
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"Unhandled {ex.GetType().Name} thrown in background service: {ex.Message}{Environment.NewLine}{ex.StackTrace}");
+				_logger.Error($"Unhandled {ex.GetType().Name} thrown in background service: {ex.Message}{Environment.NewLine}{ex.StackTrace}");
 			}
 			finally
 			{
 				_currentlyRunning = false;
-				Console.WriteLine("Background tasks complete!");
+				_logger.Information("Background task complete!");
 			}
 		}
 	}

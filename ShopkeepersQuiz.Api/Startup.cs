@@ -12,6 +12,7 @@ using ShopkeepersQuiz.Api.Repositories.Queues;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
+using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.IO;
 using System.Linq;
@@ -44,6 +45,8 @@ namespace ShopkeepersQuiz.Api
 				var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 				config.IncludeXmlComments(xmlPath);
 			});
+
+			services.AddSingleton(Log.Logger);
 
 			RegisterDependencyInjection(services);
 		}
@@ -100,21 +103,27 @@ namespace ShopkeepersQuiz.Api
 		/// </summary>
 		private void RegisterDependencyInjection(IServiceCollection services)
 		{
-			// AConfiguration
+			// Configuration
 			services.Configure<ConnectionStrings>(options => Configuration.GetSection(nameof(ConnectionStrings)).Bind(options));
 			services.Configure<QuestionSettings>(options => Configuration.GetSection(nameof(QuestionSettings)).Bind(options));
 			services.Configure<ScraperSettings>(options => Configuration.GetSection(nameof(ScraperSettings)).Bind(options));
 
 			// App Services
 			services.AddScoped<IQuestionService, QuestionService>();
-			services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
 
 			// App Repositories
 			services.AddTransient<IQuestionRepository, QuestionRepository>();
 			services.AddTransient<IQueueRepository, QueueRepository>();
 
+			// App Utilities
+			services.AddSingleton<RandomHelper>();
+
 			// Scrapers
 			services.AddTransient<IScraper, GamepediaScraper>();
+
+			// Question Generators
+			services.AddScoped<IQuestionGenerator, CooldownQuestionGenerator>();
+			services.AddScoped<IQuestionGenerator, ManaCostQuestionGenerator>();
 		}
 	}
 }
