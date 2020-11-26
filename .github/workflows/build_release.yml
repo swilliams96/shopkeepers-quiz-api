@@ -16,8 +16,8 @@ jobs:
     - name: Extract release version
       shell: bash
       run: |
-        [[ ${GITHUB_REF#refs/heads/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
-        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
+        [[ ${GITHUB_REF#refs/heads/release/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
+        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/release})"
       id: extract_version
 
     - uses: microsoft/variable-substitution@v1 
