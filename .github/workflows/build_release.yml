@@ -17,12 +17,13 @@ jobs:
       shell: bash
       run: |
         [[ ${GITHUB_REF#refs/heads/release/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
+        echo "Setting release version variable to: ${GITHUB_REF#refs/heads/release}"
         echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/release})"
       id: extract_version
 
     - uses: microsoft/variable-substitution@v1 
       with:
-        files: 'appsettings.json'
+        files: 'ShopkeepersQuiz.Api/appsettings.json'
       env:
         Version: ${{ steps.extract_version.outputs.version }}
 
