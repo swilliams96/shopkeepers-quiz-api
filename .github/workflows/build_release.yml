@@ -17,8 +17,8 @@ jobs:
       shell: bash
       run: |
         [[ ${GITHUB_REF#refs/heads/release/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
-        echo "Setting release version variable to: ${GITHUB_REF#refs/heads/release}"
-        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/release})"
+        echo "Setting release version variable to: ${GITHUB_REF#refs/heads/release/}"
+        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/release/})"
       id: extract_version
 
     - uses: microsoft/variable-substitution@v1 
