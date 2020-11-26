@@ -30,8 +30,7 @@ jobs:
     - name: Build & publish docker image
       uses: matootie/github-docker@v3.1.0
       with:
-        accessToken: ${{ secrets.GITHUB_TOKEN  }}
-        imageName: "shopkeepers-quiz-api"
+        accessToken: ${{ secrets.CONTAINERREGISTRYACCESSTOKEN  }}
         tag: |
           latest
           ${{ steps.extract_version.outputs.version }}
