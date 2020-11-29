@@ -1,7 +1,9 @@
 name: Release Build
 
 on:
-  create
+  create:
+  push:
+    branches: [ release/* ]
 
 jobs:
   build:
