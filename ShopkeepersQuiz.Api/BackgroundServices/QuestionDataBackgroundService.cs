@@ -124,7 +124,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			}
 			catch (Exception ex)
 			{
-				_logger.Error($"Unhandled {ex.GetType().Name} thrown in background service: {ex.Message}{Environment.NewLine}{ex.StackTrace}");
+				_logger.Error(ex, $"Unhandled {ex.GetType().Name} thrown in background service.");
 			}
 			finally
 			{
