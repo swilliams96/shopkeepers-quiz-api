@@ -14,11 +14,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Extract release version
-      shell: bash
-      run: |
-        [[ ${GITHUB_REF#refs/heads/release/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
-        echo "Setting release version variable to: ${GITHUB_REF#refs/heads/release/}"
-        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/release/})"
+      run: ./.github/workflows/extract-release-version.sh
       id: extract_version
 
     - uses: microsoft/variable-substitution@v1 
