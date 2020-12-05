@@ -1,7 +1,9 @@
 name: Release Build
 
 on:
-  create
+  create:
+  push:
+    branches: [ release/* ]
 
 jobs:
   build:
@@ -11,26 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout source code
+      uses: actions/checkout@v2
 
     - name: Extract release version
-      shell: bash
-      run: |
-        [[ ${GITHUB_REF#refs/heads/release/} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || (echo "Invalid branch name format!" && exit 1);
-        echo "Setting release version variable to: ${GITHUB_REF#refs/heads/release/}"
-        echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/release/})"
+      run: ./.github/workflows/extract-release-version.sh
       id: extract_version
-
-    - uses: microsoft/variable-substitution@v1 
-      with:
-        files: 'ShopkeepersQuiz.Api/appsettings.json'
-      env:
-        Version: ${{ steps.extract_version.outputs.version }}
 
     - name: Build & publish docker image
       uses: matootie/github-docker@v3.1.0
       with:
         accessToken: ${{ secrets.CONTAINERREGISTRYACCESSTOKEN  }}
+        buildArgs: |
+          VERSION=${{ steps.extract_version.outputs.version }}
         tag: |
           latest
           ${{ steps.extract_version.outputs.version }}

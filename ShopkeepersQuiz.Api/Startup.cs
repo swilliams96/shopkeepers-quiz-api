@@ -53,9 +53,6 @@ namespace ShopkeepersQuiz.Api
 
 		public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 		{
-			string appName = Configuration.GetValue("Name", "Shopkeeper's Quiz API");
-			string appVersion = Configuration.GetValue("Version", "0.0.0");
-
 			if (env.IsDevelopment())
 			{
 				app.UseDeveloperExceptionPage();
@@ -78,7 +75,7 @@ namespace ShopkeepersQuiz.Api
 			app.UseSwagger();
 			app.UseSwaggerUI(config =>
 			{
-				config.SwaggerEndpoint("/swagger/v1/swagger.json", $"{appName} v{appVersion}");
+				config.SwaggerEndpoint("/swagger/v1/swagger.json", $"{Program.ApplicationName} v{Program.ApplicationVersion}");
 				config.RoutePrefix = string.Empty;
 			});
 

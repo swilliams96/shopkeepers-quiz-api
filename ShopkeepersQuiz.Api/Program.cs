@@ -1,15 +1,23 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using ShopkeepersQuiz.Api.BackgroundServices;
 using System;
+using System.Reflection;
 
 namespace ShopkeepersQuiz.Api
 {
 	public class Program
 	{
+		public static string ApplicationName { get; private set; }
+
+		public static string ApplicationVersion => Assembly.GetExecutingAssembly()
+			.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+			.InformationalVersion ?? "LOCAL";
+
 		public static void Main(string[] args)
 		{
 			string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
@@ -20,18 +28,17 @@ namespace ShopkeepersQuiz.Api
 				.AddEnvironmentVariables()
 				.Build();
 
-			string appName = loggerConfig.GetValue<string>("ApplicationName") ?? "Shopkeeper's Quiz";
-			string appVersion = loggerConfig.GetValue<string>("ApplicationVersion") ?? "0.0.0";
+			ApplicationName = loggerConfig.GetValue<string>("ApplicationName") ?? "Shopkeeper's Quiz API";
 
 			Log.Logger = new LoggerConfiguration()
 				.ReadFrom.Configuration(loggerConfig)
 				.Enrich.FromLogContext()
-				.Enrich.WithProperty("ApplicationVersion", appVersion)
+				.Enrich.WithProperty("ApplicationVersion", ApplicationVersion)
 				.CreateLogger();
 
 			try
 			{
-				Log.Information($"Starting {appName} v{appVersion}");
+				Log.Information($"Starting {ApplicationName} v{ApplicationVersion}");
 
 				CreateHostBuilder(args).Build().Run();
 			}
