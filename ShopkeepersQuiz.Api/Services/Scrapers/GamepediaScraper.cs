@@ -227,7 +227,6 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// not changed can be persisted changed to allow for better data collection on question difficulty.
 		/// </summary>
 		/// <param name="scrapedAbilities">The scraped <see cref="Ability"/> entities to save.</param>
-		/// <param name="heroes">The <see cref="Hero"/> entities that are in the database.</param>
 		private async Task SaveAbilityData(IEnumerable<Ability> scrapedAbilities)
 		{
 			IEnumerable<Hero> heroes = _context.Heroes.Include(x => x.Abilities).ToList();
