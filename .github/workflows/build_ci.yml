@@ -23,7 +23,7 @@ jobs:
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --configuration Release --no-restore -p:InformationalVersion=CI__${{ GITHUB_REF }}
+      run: dotnet build --configuration Release --no-restore -p:InformationalVersion=CI__${{ github.ref }}
 
     - name: Test
       run: dotnet test --no-restore --verbosity normal
