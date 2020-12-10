@@ -34,9 +34,9 @@ namespace ShopkeepersQuiz.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public IActionResult GetAnswerForQueueEntry(Guid queueEntryId)
+        public async Task<IActionResult> GetAnswerForQueueEntry(Guid queueEntryId)
         {
-            var result = _questionService.GetPreviousQueueEntryAnswer(queueEntryId);
+            var result = await _questionService.GetPreviousQueueEntryAnswer(queueEntryId);
 
             return result.Match<IActionResult>(
                 answerDto => Ok(answerDto),
