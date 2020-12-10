@@ -22,6 +22,8 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 {
 	public class QuestionService : IQuestionService
 	{
+		const int TimeDriftBufferSeconds = 1;
+
 		private readonly IQuestionRepository _questionRepository;
 		private readonly IQueueRepository _queueRepository;
 		private readonly QuestionSettings _questionSettings;
@@ -84,20 +86,27 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 			return questionQueue;
 		}
 
-		public OneOf<AnswerDto, NotFound, AnswerNotAvailableYet> GetPreviousQueueEntryAnswer(Guid queueEntryId)
+		public async ValueTask<OneOf<AnswerDto, NotFound, AnswerNotAvailableYet>> GetPreviousQueueEntryAnswer(Guid queueEntryId)
 		{
 			string answerCacheKey = CacheKeys.PreviousQueueEntry(queueEntryId);
+
 			if (_cache.TryGetValue(answerCacheKey, out QueueEntry entry))
 			{
-				// Allow a grace period of 2 seconds in case client/server clocks differ
-				if (entry.EndTimeUtc.AddSeconds(-2) < DateTime.UtcNow)
+				TimeSpan timeUntilAnswerAvailable = entry.EndTimeUtc - DateTime.UtcNow - TimeSpan.FromSeconds(TimeDriftBufferSeconds);
+				TimeSpan timeUntilQuestionStarts = entry.StartTimeUtc - DateTime.UtcNow - TimeSpan.FromSeconds(TimeDriftBufferSeconds);
+
+				if (timeUntilAnswerAvailable < TimeSpan.Zero)
 				{
 					return entry.CorrectAnswer.MapToDto();
 				}
-				else
+				else if (timeUntilQuestionStarts < TimeSpan.Zero)
 				{
-					return new AnswerNotAvailableYet();
+					// Hold the response until the answer is available if the question has started
+					await Task.Delay(timeUntilAnswerAvailable);
+					return entry.CorrectAnswer.MapToDto();
 				}
+
+				return new AnswerNotAvailableYet();
 			}
 
 			return new NotFound();

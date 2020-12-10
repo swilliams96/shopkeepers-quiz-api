@@ -20,6 +20,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		/// Gets the correct <see cref="AnswerDto"/> for a previous <see cref="QueueEntry"/>.
 		/// </summary>
 		/// <param name="queueEntryId">The ID of the <see cref="QueueEntry"/>.</param>
-		public OneOf<AnswerDto, NotFound, AnswerNotAvailableYet> GetPreviousQueueEntryAnswer(Guid queueEntryId);
+		public ValueTask<OneOf<AnswerDto, NotFound, AnswerNotAvailableYet>> GetPreviousQueueEntryAnswer(Guid queueEntryId);
 	}
 }
