@@ -6,6 +6,7 @@ using Serilog;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
+using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -22,6 +23,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		private readonly IEnumerable<IScraper> _scrapers;
 		private readonly ILogger _logger;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
+		private readonly DateTimeProvider _dateTimeProvider;
 
 		/// <summary>
 		/// The <see cref="Timer"/> used to check if the scrapers should be run.
@@ -47,12 +49,14 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			IOptions<ScraperSettings> scraperSettings,
 			IEnumerable<IScraper> scrapers,
 			ILogger logger,
-			IServiceScopeFactory serviceScopeFactory)
+			IServiceScopeFactory serviceScopeFactory,
+			DateTimeProvider dateTimeProvider)
 		{
 			_scraperSettings = scraperSettings.Value;
 			_scrapers = scrapers;
 			_logger = logger.ForContext<QuestionDataBackgroundService>();
 			_serviceScopeFactory = serviceScopeFactory;
+			_dateTimeProvider = dateTimeProvider;
 		}
 
 		public Task StartAsync(CancellationToken cancellationToken)
@@ -81,7 +85,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		/// </summary>
 		private void DoWorkIfScheduled(object state)
 		{
-			if (_nextRunTimeUtc <= DateTime.UtcNow)
+			if (_nextRunTimeUtc <= _dateTimeProvider.GetUtcNow())
 			{
 				if (_currentlyRunning)
 				{
@@ -92,7 +96,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 					RunScrapers().ConfigureAwait(false);
 				}
 
-				_nextRunTimeUtc = _cronExpression.GetNextOccurrence(DateTime.UtcNow) ?? DateTime.MaxValue;
+				_nextRunTimeUtc = _cronExpression.GetNextOccurrence(_dateTimeProvider.GetUtcNow()) ?? DateTime.MaxValue;
 			}
 		}
 

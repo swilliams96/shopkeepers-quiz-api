@@ -13,6 +13,7 @@ using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Repositories.Queues;
+using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,17 +29,20 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		private readonly IQueueRepository _queueRepository;
 		private readonly QuestionSettings _questionSettings;
 		private readonly IMemoryCache _cache;
+		private readonly DateTimeProvider _dateTimeProvider;
 
 		public QuestionService(
 			IQuestionRepository questionRepository,
 			IQueueRepository queueRepository,
 			IOptions<QuestionSettings> questionSettings,
-			IMemoryCache cache)
+			IMemoryCache cache,
+			DateTimeProvider dateTimeProvider)
 		{
 			_questionRepository = questionRepository;
 			_queueRepository = queueRepository;
 			_questionSettings = questionSettings.Value;
 			_cache = cache;
+			_dateTimeProvider = dateTimeProvider;
 		}
 
 		public async Task<IEnumerable<QueueEntry>> GetQuestionQueue()
@@ -92,8 +96,9 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 
 			if (_cache.TryGetValue(answerCacheKey, out QueueEntry entry))
 			{
-				TimeSpan timeUntilAnswerAvailable = entry.EndTimeUtc - DateTime.UtcNow - TimeSpan.FromSeconds(TimeDriftBufferSeconds);
-				TimeSpan timeUntilQuestionStarts = entry.StartTimeUtc - DateTime.UtcNow - TimeSpan.FromSeconds(TimeDriftBufferSeconds);
+				DateTime now = _dateTimeProvider.GetUtcNow();
+				TimeSpan timeUntilAnswerAvailable = entry.EndTimeUtc - now - TimeSpan.FromSeconds(TimeDriftBufferSeconds);
+				TimeSpan timeUntilQuestionStarts = entry.StartTimeUtc - now - TimeSpan.FromSeconds(TimeDriftBufferSeconds);
 
 				if (timeUntilAnswerAvailable < TimeSpan.Zero)
 				{
@@ -126,7 +131,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 
 			IEnumerable<QueueEntry> questionQueue = JsonConvert.DeserializeObject<IEnumerable<QueueEntry>>(questionQueueJson);
 
-			DateTime fromTime = DateTime.UtcNow.AddSeconds((double)_questionSettings.AnswerTimeSeconds * -1);
+			DateTime fromTime = _dateTimeProvider.GetUtcNow().AddSeconds((double)_questionSettings.AnswerTimeSeconds * -1);
 
 			return questionQueue.Where(x => x.StartTimeUtc >= fromTime).Take(questionCount);
 		}
@@ -186,7 +191,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		/// </summary>
 		private DateTime GetNextQuestionStartTimeUtc(TimeSpan totalQuestionTime, DateTime? afterDate = null)
 		{
-			afterDate ??= DateTime.UtcNow;
+			afterDate ??= _dateTimeProvider.GetUtcNow();
 
 			var overflow = afterDate.Value.Ticks % totalQuestionTime.Ticks;
 
@@ -208,7 +213,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 			IEnumerable<QueueEntry> existingQueueEntries = await _queueRepository.GetUpcomingQueueEntries();
 
 			IEnumerable<QueueEntry> queueEntriesToAdd = questionQueue
-				.Where(x => x.StartTimeUtc >= DateTime.UtcNow)
+				.Where(x => x.StartTimeUtc >= _dateTimeProvider.GetUtcNow())
 				.Where(x => !existingQueueEntries.Any(existing => x.Id == existing.Id));
 
 			foreach (var entry in queueEntriesToAdd)

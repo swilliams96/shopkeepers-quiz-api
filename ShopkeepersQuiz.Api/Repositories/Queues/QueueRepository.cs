@@ -2,6 +2,7 @@
 using ShopkeepersQuiz.Api.Models.Messages;
 using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +13,12 @@ namespace ShopkeepersQuiz.Api.Repositories.Queues
 	public class QueueRepository : IQueueRepository
 	{
 		private readonly ApplicationDbContext _context;
+		private readonly DateTimeProvider _dateTimeProvider;
 
-		public QueueRepository(ApplicationDbContext context)
+		public QueueRepository(ApplicationDbContext context, DateTimeProvider dateTimeProvider)
 		{
 			_context = context;
+			_dateTimeProvider = dateTimeProvider;
 		}
 
 		public async Task<IEnumerable<QueueEntry>> GetUpcomingQueueEntries()
@@ -25,7 +28,7 @@ namespace ShopkeepersQuiz.Api.Repositories.Queues
 					.ThenInclude(q => q.Ability)
 				.Include(q => q.Question)
 					.ThenInclude(q => q.Answers)
-				.Where(x => x.StartTimeUtc >= DateTime.UtcNow)
+				.Where(x => x.StartTimeUtc >= _dateTimeProvider.GetUtcNow())
 				.ToListAsync();
 		}
 
