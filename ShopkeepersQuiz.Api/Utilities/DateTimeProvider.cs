@@ -4,6 +4,6 @@ namespace ShopkeepersQuiz.Api.Utilities
 {
 	public class DateTimeProvider
 	{
-		public DateTime GetUtcNow() => DateTime.UtcNow;
+		public virtual DateTime GetUtcNow() => DateTime.UtcNow;
 	}
 }
