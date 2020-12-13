@@ -1,4 +1,4 @@
-﻿using AutoFixture;
+using AutoFixture;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.Caching.Memory;
@@ -53,7 +53,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
 				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
 				.CreateMany();
-			_cache.SetupForTest(CacheKeys.QuestionQueue, cacheResults);
+			_cache.Set(CacheKeys.QuestionQueue, cacheResults);
 
 			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries())
 				.Throws(new AssertionFailedException("QueueRepository should not be called in this scenario."));
@@ -84,7 +84,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 		}
 
 		[Fact]
-		public async Task GetQuestionQueue_CacheDoesNotContainEnoughQuestions_QuestionQueueEntriesFromDatabaseAreReturnedSuccessfullyInstead()
+		public async Task GetQuestionQueue_CacheDoesNotContainEnoughQuestionsButDatabaseDoes_QuestionQueueEntriesFromDatabaseAreReturnedSuccessfullyInstead()
 		{
 			var repositoryResults = _fixture.Build<QueueEntry>()
 				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
@@ -94,7 +94,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 
 			var cacheResults = new List<QueueEntry>() { repositoryResults.First() };
 
-			_cache.SetupForTest(CacheKeys.QuestionQueue, cacheResults);
+			_cache.Set(CacheKeys.QuestionQueue, cacheResults);
 			
 			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
 
@@ -116,13 +116,35 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 
 			var cacheResults = new List<QueueEntry>() { repositoryResults.First() };
 
-			_cache.SetupForTest(CacheKeys.QuestionQueue, cacheResults);
+			_cache.Set(CacheKeys.QuestionQueue, cacheResults);
 
 			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
 
 			await Sut.GetQuestionQueue();
 
 			_cache.Should().ContainValueForKey(CacheKeys.QuestionQueue, repositoryResults);
+		}
+
+		[Fact]
+		public async Task GetQuestionQueue_CacheIsEmptyButDatabaseContainsEnoughEntries_CorrectAnswersAreAddedToCache()
+		{
+			DateTime testTimeUtcNow = DateTime.UtcNow.AddDays(1);
+			_mockDateTimeProvider.Setup(x => x.GetUtcNow()).Returns(testTimeUtcNow);
+
+			var repositoryResults = _fixture.Build<QueueEntry>()
+				.With(x => x.StartTimeUtc, testTimeUtcNow.AddSeconds(30))
+				.With(x => x.EndTimeUtc, testTimeUtcNow.AddSeconds(45))
+				.CreateMany(3);
+			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+
+			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
+
+			await Sut.GetQuestionQueue();
+
+			foreach (var item in repositoryResults)
+			{
+				_cache.Should().ContainValueForKey(CacheKeys.PreviousQueueEntry(item.Id), item);
+			}
 		}
 	}
 }

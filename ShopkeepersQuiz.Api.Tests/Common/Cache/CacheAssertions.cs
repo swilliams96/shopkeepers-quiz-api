@@ -25,23 +25,32 @@ namespace ShopkeepersQuiz.Api.Tests.Common.Cache
 		/// <param name="expectedValue">The expected value of the cache entry.</param>
 		public AndConstraint<CacheAssertions> ContainValueForKey<T>(string key, T expectedValue, string because = "", params object[] becauseArgs)
 		{
-			string cacheValueJson = Subject.Get<string>(key);
-			bool cacheValueIsTypeT = TryParseJson<T>(cacheValueJson, out T cacheValue);
+			T cacheValue = default;
+			bool cacheValueIsTypeT = false;
+
+			bool cacheValueExists = Subject.TryGetValue(key, out object cacheValueUntyped);
+			if (cacheValueExists && cacheValueUntyped is T cacheValueCasted)
+			{
+				cacheValueIsTypeT = true;
+				cacheValue = cacheValueCasted;
+			}
+
 			string expectedValueJson = JsonConvert.SerializeObject(expectedValue);
+			string cacheValueJson = JsonConvert.SerializeObject(cacheValueUntyped);
 
 			Execute.Assertion
 				.BecauseOf(because, becauseArgs)
 				.ForCondition(!string.IsNullOrEmpty(key))
-				.FailWith("A cache key must be provided")
+				.FailWith("A cache key must be provided.")
 				.Then
-				.ForCondition(!string.IsNullOrEmpty(cacheValueJson))
+				.ForCondition(cacheValueExists)
 				.FailWith("Expected cache to contain a value for key {0}{reason}, but there was no value.", key)
 				.Then
 				.ForCondition(cacheValueIsTypeT)
 				.FailWith("Expected cache to contain a value of type {1} for key {0}{reason}.", key, typeof(T).FullName)
 				.Then
 				.ForCondition(cacheValueJson == expectedValueJson)
-				.FailWith("Expected cache to contain {1} for key {0}{reason}, but found {2}.", key, cacheValue, expectedValue);
+				.FailWith("Expected cache to contain {1} for key {0}{reason}, but found {2}.", key, expectedValue, cacheValue);
 
 			return new AndConstraint<CacheAssertions>(this);
 		}
@@ -53,15 +62,15 @@ namespace ShopkeepersQuiz.Api.Tests.Common.Cache
 		/// <param name="key">The cache key on which to assert.</param>
 		public AndConstraint<CacheAssertions> ContainValueForKey<T>(string key, string because = "", params object[] becauseArgs)
 		{
-			string cacheValueJson = Subject.Get<string>(key);
-			bool cacheValueIsTypeT = TryParseJson<T>(cacheValueJson, out _);
+			bool cacheValueExists = Subject.TryGetValue(key, out object cacheValueUntyped);
+			bool cacheValueIsTypeT = cacheValueExists && cacheValueUntyped is T;
 
 			Execute.Assertion
 				.BecauseOf(because, becauseArgs)
 				.ForCondition(!string.IsNullOrEmpty(key))
 				.FailWith("A cache key must be provided")
 				.Then
-				.ForCondition(string.IsNullOrEmpty(cacheValueJson))
+				.ForCondition(cacheValueExists)
 				.FailWith("Expected cache to contain a value for key {0}{reason}, but there was no value.", key)
 				.Then
 				.ForCondition(cacheValueIsTypeT)
@@ -77,33 +86,17 @@ namespace ShopkeepersQuiz.Api.Tests.Common.Cache
 		/// <param name="key">The cache key on which to assert.</param>
 		public AndConstraint<CacheAssertions> ContainValueForKey(string key, string because = "", params object[] becauseArgs)
 		{
-			string cacheValueJson = Subject.Get<string>(key);
-			bool cacheValueIsTypeT = TryParseJson<object>(cacheValueJson, out _);
+			bool cacheValueExists = Subject.TryGetValue(key, out _);
 
 			Execute.Assertion
 				.BecauseOf(because, becauseArgs)
 				.ForCondition(!string.IsNullOrEmpty(key))
 				.FailWith("A cache key must be provided")
 				.Then
-				.ForCondition(string.IsNullOrEmpty(cacheValueJson))
+				.ForCondition(cacheValueExists)
 				.FailWith("Expected cache to contain a value for key {0}{reason}, but there was no value.", key);
 
 			return new AndConstraint<CacheAssertions>(this);
-		}
-
-		private bool TryParseJson<T>(string json, out T result)
-		{
-			bool success = true;
-			
-			var settings = new JsonSerializerSettings
-			{
-				Error = (sender, args) => { success = false; args.ErrorContext.Handled = true; },
-				MissingMemberHandling = MissingMemberHandling.Error
-			};
-
-			result = JsonConvert.DeserializeObject<T>(json, settings);
-
-			return success;
 		}
 	}
 }

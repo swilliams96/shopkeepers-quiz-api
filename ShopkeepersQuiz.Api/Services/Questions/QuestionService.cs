@@ -58,14 +58,14 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 			questionQueue = (await _queueRepository.GetUpcomingQueueEntries()).ToList();
 			if (questionQueue.Count >= questionCount)
 			{
-				_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
+				_cache.Set(CacheKeys.QuestionQueue, questionQueue);
 			}
 			else
 			{
 				int newQuestions = await AddQuestionsToQuestionQueue(questionQueue, questionCount);
 				if (newQuestions > 0)
 				{
-					_cache.Set(CacheKeys.QuestionQueue, JsonConvert.SerializeObject(questionQueue));
+					_cache.Set(CacheKeys.QuestionQueue, questionQueue);
 
 					try
 					{
@@ -123,13 +123,10 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		/// <returns>A non-null <see cref="IEnumerable{QueueEntry}"/>.</returns>
 		private IEnumerable<QueueEntry> GetQuestionQueueFromCache(int questionCount)
 		{
-			string questionQueueJson = _cache.Get<string>(CacheKeys.QuestionQueue);
-			if (string.IsNullOrWhiteSpace(questionQueueJson))
+			if (!_cache.TryGetValue(CacheKeys.QuestionQueue, out IEnumerable<QueueEntry> questionQueue))
 			{
 				return Enumerable.Empty<QueueEntry>();
 			}
-
-			IEnumerable<QueueEntry> questionQueue = JsonConvert.DeserializeObject<IEnumerable<QueueEntry>>(questionQueueJson);
 
 			DateTime fromTime = _dateTimeProvider.GetUtcNow().AddSeconds((double)_questionSettings.AnswerTimeSeconds * -1);
 
