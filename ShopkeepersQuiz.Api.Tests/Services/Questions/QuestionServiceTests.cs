@@ -4,12 +4,14 @@ using FluentAssertions.Execution;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Moq;
-using Newtonsoft.Json;
+using ShopkeepersQuiz.Api.Models.Cache;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Repositories.Queues;
 using ShopkeepersQuiz.Api.Services.Questions;
+using ShopkeepersQuiz.Api.Tests.Common;
+using ShopkeepersQuiz.Api.Tests.Common.Cache;
 using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
@@ -25,7 +27,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 
 		private readonly Mock<IQuestionRepository> _mockQuestionRepository = new Mock<IQuestionRepository>();
 		private readonly Mock<IQueueRepository> _mockQueueRepository = new Mock<IQueueRepository>();
-		private readonly Mock<IMemoryCache> _mockCache = new Mock<IMemoryCache>();
+		private readonly IMemoryCache _cache = new MemoryCache(Options.Create(new MemoryCacheOptions()));
 		private readonly Mock<DateTimeProvider> _mockDateTimeProvider = new Mock<DateTimeProvider>();
 
 		private readonly QuestionSettings _questionSettings = new QuestionSettings();
@@ -38,7 +40,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				_mockQuestionRepository.Object,
 				_mockQueueRepository.Object,
 				Options.Create(_questionSettings),
-				_mockCache.Object,
+				_cache,
 				_mockDateTimeProvider.Object);
 
 			_mockDateTimeProvider.Setup(x => x.GetUtcNow()).Returns(UtcNowFixed);
@@ -47,14 +49,11 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 		[Fact]
 		public async Task GetQuestionQueue_CacheReturnsEnoughQuestions_CachedQuestionsReturnedSuccessfully()
 		{
-			IEnumerable<QueueEntry> cacheResults = _fixture.Build<QueueEntry>()
+			var cacheResults = _fixture.Build<QueueEntry>()
 				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
 				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
 				.CreateMany();
-			object cacheResultsJson = JsonConvert.SerializeObject(cacheResults);
-
-			// We can't mock extension methods but Get<> calls TryGetValue under the hood, so we can mock this instead
-			_mockCache.Setup(x => x.TryGetValue(It.IsAny<string>(), out cacheResultsJson)).Returns(true);
+			_cache.SetupForTest(CacheKeys.QuestionQueue, cacheResults);
 
 			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries())
 				.Throws(new AssertionFailedException("QueueRepository should not be called in this scenario."));
@@ -65,6 +64,65 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 
 			result.Should().HaveCount(cacheResults.Count());
 			result.Should().BeEquivalentTo(cacheResults);
+		}
+
+		[Fact]
+		public async Task GetQuestionQueue_CacheIsEmpty_QuestionQueueEntriesFromDatabaseAreReturnedSuccessfullyInstead()
+		{
+			var repositoryResults = _fixture.Build<QueueEntry>()
+				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
+				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
+				.CreateMany();
+			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+
+			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
+
+			var result = await Sut.GetQuestionQueue();
+
+			result.Should().HaveCount(repositoryResults.Count());
+			result.Should().BeEquivalentTo(repositoryResults);
+		}
+
+		[Fact]
+		public async Task GetQuestionQueue_CacheDoesNotContainEnoughQuestions_QuestionQueueEntriesFromDatabaseAreReturnedSuccessfullyInstead()
+		{
+			var repositoryResults = _fixture.Build<QueueEntry>()
+				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
+				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
+				.CreateMany(3);
+			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+
+			var cacheResults = new List<QueueEntry>() { repositoryResults.First() };
+
+			_cache.SetupForTest(CacheKeys.QuestionQueue, cacheResults);
+			
+			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
+
+			var result = await Sut.GetQuestionQueue();
+
+			result.Should().HaveCount(repositoryResults.Count());
+			result.Should().NotHaveCount(cacheResults.Count());
+			result.Should().BeEquivalentTo(repositoryResults);
+		}
+
+		[Fact]
+		public async Task GetQuestionQueue_CacheDoesNotContainEnoughQuestionsButDatabaseDoes_CacheIsUpdatedWithNewQueueSuccessfully()
+		{
+			var repositoryResults = _fixture.Build<QueueEntry>()
+				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
+				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
+				.CreateMany(3);
+			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+
+			var cacheResults = new List<QueueEntry>() { repositoryResults.First() };
+
+			_cache.SetupForTest(CacheKeys.QuestionQueue, cacheResults);
+
+			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
+
+			await Sut.GetQuestionQueue();
+
+			_cache.Should().ContainValueForKey(CacheKeys.QuestionQueue, repositoryResults);
 		}
 	}
 }

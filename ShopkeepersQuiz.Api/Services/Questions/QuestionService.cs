@@ -78,7 +78,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 				}
 			}
 
-			// Store the correct answers in the cache for when the timer runs out and the answer should be revealed
+			// Store the correct answers in the cache separately to easily retrieve the answer for when the question ends
 			foreach (var queueEntry in questionQueue)
 			{
 				string cacheKey = CacheKeys.PreviousQueueEntry(queueEntry.Id);

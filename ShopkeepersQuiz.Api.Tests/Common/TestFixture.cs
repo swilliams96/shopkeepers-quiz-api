@@ -1,6 +1,6 @@
 ﻿using AutoFixture;
 
-namespace ShopkeepersQuiz.Api.Tests
+namespace ShopkeepersQuiz.Api.Tests.Common
 {
 	public abstract class TestFixture
 	{
