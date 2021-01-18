@@ -109,8 +109,8 @@ namespace ShopkeepersQuiz.Api
 			services.AddScoped<IQuestionService, QuestionService>();
 
 			// App Repositories
-			services.AddTransient<IQuestionRepository, QuestionRepository>();
-			services.AddTransient<IQueueRepository, QueueRepository>();
+			services.AddTransient<IQuestionRepository, SqlServerQuestionRepository>();
+			services.AddTransient<IQueueRepository, SqlServerQueueRepository>();
 
 			// App Utilities
 			services.AddSingleton<RandomHelper>();

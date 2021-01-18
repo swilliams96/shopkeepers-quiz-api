@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Repositories.Queues
 {
-	public class QueueRepository : IQueueRepository
+	public class SqlServerQueueRepository : IQueueRepository
 	{
 		private readonly ApplicationDbContext _context;
 
-		public QueueRepository(ApplicationDbContext context)
+		public SqlServerQueueRepository(ApplicationDbContext context)
 		{
 			_context = context;
 		}

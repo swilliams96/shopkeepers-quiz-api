@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace ShopkeepersQuiz.Api.Repositories.Questions
 {
-	public class QuestionRepository : IQuestionRepository
+	public class SqlServerQuestionRepository : IQuestionRepository
 	{
 		private readonly ApplicationDbContext _context;
 
-		public QuestionRepository(ApplicationDbContext context)
+		public SqlServerQuestionRepository(ApplicationDbContext context)
 		{
 			_context = context;
 		}
