@@ -8,7 +8,7 @@ using Serilog;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Questions;
-using ShopkeepersQuiz.Api.Repositories.Queues;
+using ShopkeepersQuiz.Api.Repositories.QueueEntries;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
@@ -110,7 +110,7 @@ namespace ShopkeepersQuiz.Api
 
 			// App Repositories
 			services.AddTransient<IQuestionRepository, SqlServerQuestionRepository>();
-			services.AddTransient<IQueueRepository, SqlServerQueueRepository>();
+			services.AddTransient<IQueueEntryRepository, SqlServerQueueEntryRepository>();
 
 			// App Utilities
 			services.AddSingleton<RandomHelper>();

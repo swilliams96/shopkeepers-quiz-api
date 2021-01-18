@@ -7,13 +7,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ShopkeepersQuiz.Api.Repositories.Queues
+namespace ShopkeepersQuiz.Api.Repositories.QueueEntries
 {
-	public class SqlServerQueueRepository : IQueueRepository
+	public class SqlServerQueueEntryRepository : IQueueEntryRepository
 	{
 		private readonly ApplicationDbContext _context;
 
-		public SqlServerQueueRepository(ApplicationDbContext context)
+		public SqlServerQueueEntryRepository(ApplicationDbContext context)
 		{
 			_context = context;
 		}
@@ -56,8 +56,8 @@ namespace ShopkeepersQuiz.Api.Repositories.Queues
 			DateTime end = queueEntry.EndTimeUtc;
 
 			return await _context.QueueEntries
-				.Where(x => (x.StartTimeUtc <= start && x.EndTimeUtc > start)
-					|| (x.StartTimeUtc < end && x.EndTimeUtc >= end))
+				.Where(x => x.StartTimeUtc <= start && x.EndTimeUtc > start
+					|| x.StartTimeUtc < end && x.EndTimeUtc >= end)
 				.AnyAsync();
 		}
 	}
