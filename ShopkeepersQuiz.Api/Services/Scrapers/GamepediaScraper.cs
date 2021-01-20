@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Repositories.Heroes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 
 		private readonly HtmlWeb _web = new HtmlWeb();
 
-		private ApplicationDbContext _context;
+		private IHeroRepository _heroRepository;
 
 		/// <summary>
 		/// The abilities that shouldn't be stored as they are not "real" abilities that we want to generate questions for.
@@ -53,7 +54,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 
 		public async Task RunScraper(IServiceScope scope)
 		{
-			_context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			_heroRepository = scope.ServiceProvider.GetRequiredService<IHeroRepository>();
 			_web.UserAgent = "Shopkeeper's Quiz";
 
 			Console.WriteLine("Running Gamepedia scraper...");
@@ -61,7 +62,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 			IEnumerable<Hero> scrapedHeroes = ScrapeHeroes();
 			await SaveHeroData(scrapedHeroes);
 
-			IEnumerable<Ability> scrapedAbilities = ScrapeAbilities();
+			IEnumerable<Ability> scrapedAbilities = await ScrapeAbilities();
 			await SaveAbilityData(scrapedAbilities);
 
 			//IEnumerable<Item> scrapedItems = ScrapeItems();
@@ -97,13 +98,13 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// <summary>
 		/// Scrapes all of the abilities for each of the heroes provided.
 		/// </summary>
-		private IEnumerable<Ability> ScrapeAbilities()
+		private async Task<IEnumerable<Ability>> ScrapeAbilities()
 		{
 			var abilities = new List<Ability>();
 
 			Console.WriteLine($"Scraping abilities...");
 
-			IEnumerable<Hero> heroes = _context.Heroes.ToList();
+			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
 			foreach (Hero hero in heroes)
 			{
@@ -154,6 +155,15 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		}
 
 		/// <summary>
+		/// Gets the image URL for an ability.
+		/// </summary>
+		/// <param name="abilityNode">The <see cref="HtmlNode"/> containing the ability data.</param>
+		private string GetImageUrlForAbility(HtmlNode abilityNode)
+		{
+			return abilityNode.SelectSingleNode(".//div[contains(@class, 'ico_')]/a/img[1]")?.Attributes["src"].Value;
+		}
+
+		/// <summary>
 		/// Gets the mana cost of an ability.
 		/// </summary>
 		/// <param name="abilityNode">The <see cref="HtmlNode"/> containing the ability data.</param>
@@ -162,7 +172,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 			string manaCost = HttpUtility.HtmlDecode(
 				abilityNode.SelectSingleNode(".//a[@href='/Mana']/../parent::div")?.GetDirectInnerText());
 
-			return manaCost?.Trim() ?? "0";
+			return string.IsNullOrWhiteSpace(manaCost) ? "0" : manaCost.Trim();
 		}
 
 		/// <summary>
@@ -180,16 +190,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 				cooldown = cooldown?.Substring(0, bracketIndex);
 			}
 
-			return cooldown?.Trim() ?? "0";
-		}
-
-		/// <summary>
-		/// Gets the image URL for an ability.
-		/// </summary>
-		/// <param name="abilityNode">The <see cref="HtmlNode"/> containing the ability data.</param>
-		private string GetImageUrlForAbility(HtmlNode abilityNode)
-		{
-			return abilityNode.SelectSingleNode(".//div[contains(@class, 'ico_')]/a/img[1]")?.Attributes["src"].Value;
+			return string.IsNullOrWhiteSpace(cooldown) ? "0" : cooldown.Trim();
 		}
 
 		/// <summary>
@@ -199,9 +200,9 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// </summary>
 		/// <param name="heroes">The scraped <see cref="Hero"/> entities to save.</param>
 		/// <returns>The final list of all <see cref="Hero"/> entities after the save operation is complete.</returns>
-		private async Task<IEnumerable<Hero>> SaveHeroData(IEnumerable<Hero> heroes)
+		private async Task SaveHeroData(IEnumerable<Hero> heroes)
 		{
-			IEnumerable<Hero> existingHeroes = await _context.Heroes.ToListAsync();
+			IEnumerable<Hero> existingHeroes = await _heroRepository.GetAllHeroes();
 
 			IEnumerable<Hero> unsavedHeroes = heroes.Where(hero =>
 				!existingHeroes.Any(x => x.Name.Equals(hero.Name, StringComparison.InvariantCultureIgnoreCase)));
@@ -209,16 +210,10 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 				!heroes.Any(x => x.Name.Equals(existingHero.Name, StringComparison.InvariantCultureIgnoreCase)));
 
 			// Remove missing heroes
-			_context.Heroes.RemoveRange(notFoundHeroes);
+			await _heroRepository.DeleteHeroes(notFoundHeroes.Select(x => x.Id.ToString()));
 
 			// Add new heroes
-			_context.Heroes.AddRange(unsavedHeroes.OrderBy(x => x.Name));
-
-			await _context.SaveChangesAsync();
-
-			return await _context.Heroes
-				.Include(x => x.Abilities)
-				.ToListAsync();
+			await _heroRepository.CreateHeroes(unsavedHeroes.OrderBy(x => x.Name));
 		}
 
 		/// <summary>
@@ -229,19 +224,20 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// <param name="scrapedAbilities">The scraped <see cref="Ability"/> entities to save.</param>
 		private async Task SaveAbilityData(IEnumerable<Ability> scrapedAbilities)
 		{
-			IEnumerable<Hero> heroes = _context.Heroes.Include(x => x.Abilities).ToList();
-			IEnumerable<Ability> existingAbilities = _context.Abilities.ToList();
+			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
 			foreach (Hero hero in heroes)
 			{
 				IEnumerable<Ability> scrapedHeroAbilities = scrapedAbilities.Where(x => x.HeroId == hero.Id);
+
+				IEnumerable<Ability> removedHeroAbilities = Enumerable.Empty<Ability>();
 
 				foreach (Ability ability in hero.Abilities)
 				{
 					Ability matchingScrapedAbility = scrapedHeroAbilities.SingleOrDefault(x => x.Name == ability.Name);
 					if (matchingScrapedAbility != null)
 					{
-						// Update existing ability on the hero
+						// Update existing ability data on the hero
 						ability.ImageUrl = matchingScrapedAbility.ImageUrl;
 						ability.ManaCost = matchingScrapedAbility.ManaCost;
 						ability.Cooldown = matchingScrapedAbility.Cooldown;
@@ -249,8 +245,13 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 					else
 					{
 						// Remove missing abilities from the hero
-						_context.Remove(ability);
+						removedHeroAbilities.Append(ability);
 					}
+				}
+
+				foreach (Ability removedAbility in removedHeroAbilities)
+				{
+					hero.Abilities.Remove(removedAbility);
 				}
 
 				foreach (Ability scrapedAbility in scrapedHeroAbilities)
@@ -261,9 +262,9 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 						hero.Abilities.Add(scrapedAbility);
 					}
 				}
-			}
 
-			await _context.SaveChangesAsync();
+				await _heroRepository.UpdateHero(hero);
+			}
 		}
 	}
 }

@@ -20,7 +20,9 @@ namespace ShopkeepersQuiz.Api.Repositories.Heroes
 
 		public async Task<IEnumerable<Hero>> GetAllHeroes()
 		{
-			return await _context.Heroes.ToListAsync();
+			return await _context.Heroes
+				.Include(x => x.Abilities)
+				.ToListAsync();
 		}
 
 		public async Task<IEnumerable<Hero>> CreateHeroes(IEnumerable<Hero> heroes)
@@ -34,6 +36,11 @@ namespace ShopkeepersQuiz.Api.Repositories.Heroes
 
 		public async Task DeleteHeroes(IEnumerable<string> heroIds)
 		{
+			if (!heroIds.Any())
+			{
+				return;
+			}
+
 			var heroesToDelete = await _context.Heroes
 				.Where(x => heroIds.Contains(x.Id.ToString()))
 				.Include(x => x.Abilities)
@@ -42,11 +49,12 @@ namespace ShopkeepersQuiz.Api.Repositories.Heroes
 			var abilitiesToDelete = heroesToDelete.SelectMany(x => x.Abilities);
 
 			var questionsToDelete = await _context.Questions
-				.Where(x => abilitiesToDelete.Any(a => a.Id == x.AbilityId))
+				.Where(x => x.AbilityId.HasValue)
+				.Where(x => abilitiesToDelete.Select(a => a.Id).Contains(x.AbilityId.Value))
 				.ToListAsync();
 
 			var queueEntriesToDelete = await _context.QueueEntries
-				.Where(x => questionsToDelete.Any(q => q.Id == x.QuestionId))
+				.Where(x => questionsToDelete.Select(q => q.Id).Contains(x.QuestionId))
 				.ToListAsync();
 
 			_context.RemoveRange(queueEntriesToDelete);
