@@ -13,12 +13,14 @@ services:
       QuestionSettings__IncorrectAnswersGenerated: 5
       ScraperSettings__RunEvery: "0 4 ? * THU"
       ConnectionStrings__ApplicationDatabase: "Server=database,1433;Database=ShopkeepersQuiz;User Id=sa;Password=SeCR3T_P@55w0rD;"
+      ConnectionStrings__MongoDb: "mongodb://mongoadmin:secret@localhost:27017/shopkeepers-quiz?authSource=admin&readPreference=primary&ssl=false"
       Serilog__MinimumLevel: "Information"
       Serilog__Using__1: "Serilog.Sinks.Seq"
       Serilog__WriteTo__1__Name: "Seq"
       Serilog__WriteTo__1__Args__serverUrl: "http://seq:80"
     depends_on:
       - database
+      - mongodb
       - seq
 
   database:
@@ -33,6 +35,18 @@ services:
       SA_PASSWORD: "SeCR3T_P@55w0rD"
       ACCEPT_EULA: "Y"
 
+  mongodb:
+    container_name: shopkeepers-quiz-mongodb
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - "mongdb-data:/data/db"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+
   seq:
     container_name: shopkeepers-quiz-logs
     image: "datalust/seq:latest"
@@ -45,5 +59,6 @@ services:
 
 volumes:
   db-data:
+  mongdb-data:
   seq-data:
   

@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MongoDB.Driver;
 using Serilog;
+using ShopkeepersQuiz.Api.Extensions;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Heroes;
@@ -35,6 +37,8 @@ namespace ShopkeepersQuiz.Api
 			services.AddControllers();
 
 			services.AddRouting(config => config.LowercaseUrls = true);
+
+			services.AddMongoDb(Configuration);
 
 			services.AddDbContext<ApplicationDbContext>();
 
@@ -89,7 +93,7 @@ namespace ShopkeepersQuiz.Api
 		/// <summary>
 		/// Ensures that the database is migrated fully using EF Core.
 		/// </summary>
-		private static void EnsureDatabaseMigrated(IApplicationBuilder app)
+		private void EnsureDatabaseMigrated(IApplicationBuilder app)
 		{
 			using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
 			using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -110,9 +114,9 @@ namespace ShopkeepersQuiz.Api
 			services.AddScoped<IQuestionService, QuestionService>();
 
 			// App Repositories
-			services.AddTransient<IQuestionRepository, SqlServerQuestionRepository>();
-			services.AddTransient<IQueueEntryRepository, SqlServerQueueEntryRepository>();
-			services.AddTransient<IHeroRepository, SqlServerHeroRepository>();
+			services.AddTransient<IQuestionRepository, MongoDbQuestionRepository>();
+			services.AddTransient<IQueueEntryRepository, MongoDbQueueEntryRepository>();
+			services.AddTransient<IHeroRepository, MongoDbHeroRepository>();
 
 			// App Utilities
 			services.AddSingleton<RandomHelper>();

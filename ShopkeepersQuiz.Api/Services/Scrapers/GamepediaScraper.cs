@@ -36,6 +36,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 			{ "Alchemist", new string[] { "Unstable Concoction Throw", "Aghanim's Scepter Synth" } },
 			{ "Bane", new string[] { "Nightmare End" } },
 			{ "Elder Titan", new string[] { "Return Astral Spirit" } },
+			{ "Hoodwink", new string[] { "End Sharpshooter" } },
 			{ "Invoker", new string[] { "Melting Strike" } },
 			{ "Io", new string[] { "Break Tether" } },
 			{ "Keeper of the Light", new string[] { "Release Illuminate", "Illuminate (Aghanim's Scepter)", "Release Illuminate (Aghanim's Scepter)" } },

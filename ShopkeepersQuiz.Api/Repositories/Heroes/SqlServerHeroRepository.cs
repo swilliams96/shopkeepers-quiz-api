@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ShopkeepersQuiz.Api.Models.GameEntities;
-using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Repositories.Context;
 using System;
 using System.Collections.Generic;
