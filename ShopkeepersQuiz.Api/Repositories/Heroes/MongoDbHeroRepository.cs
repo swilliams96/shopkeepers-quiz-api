@@ -27,6 +27,11 @@ namespace ShopkeepersQuiz.Api.Repositories.Heroes
 		{
 			if (heroes?.Any() ?? false)
 			{
+				foreach (var hero in heroes)
+				{
+					hero.Id = Guid.NewGuid();
+				}
+
 				await _heroes.InsertManyAsync(heroes, new InsertManyOptions() { IsOrdered = true });
 			}
 

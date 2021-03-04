@@ -29,5 +29,35 @@ namespace ShopkeepersQuiz.Api.Repositories.Questions
 		{
 			return await _questions.Find(x => x.AbilityId == abilityId).ToListAsync();
 		}
+
+		public async Task<Question> CreateQuestion(Question question)
+		{
+			if (question == null)
+			{
+				throw new ArgumentNullException(nameof(question));
+			}
+
+			question.Id = Guid.NewGuid();
+
+			await _questions.InsertOneAsync(question);
+
+			return question;
+		}
+
+		public async Task DeleteQuestion(Guid questionId)
+		{
+			await _questions.DeleteOneAsync(x => x.Id == questionId);
+		}
+
+		public async Task<Question> UpdateQuestion(Question question)
+		{
+			if (question?.Id == null || question?.Id == default(Guid))
+			{
+				throw new ArgumentException("Question is null or does not have an assigned ID");
+			}
+
+			await _questions.ReplaceOneAsync(x => x.Id == question.Id, question);
+			return question;
+		}
 	}
 }

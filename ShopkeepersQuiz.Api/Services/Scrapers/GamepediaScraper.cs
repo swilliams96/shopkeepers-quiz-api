@@ -261,7 +261,6 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 					if (!hero.Abilities.Any(x => x.Name == scrapedAbility.Name))
 					{
 						// Add missing abilities to the hero
-						scrapedAbility.Id = Guid.NewGuid();
 						hero.Abilities.Add(scrapedAbility);
 					}
 				}

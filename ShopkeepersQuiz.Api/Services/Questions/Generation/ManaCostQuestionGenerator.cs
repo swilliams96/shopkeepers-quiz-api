@@ -5,7 +5,8 @@ using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
-using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Repositories.Heroes;
+using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
@@ -17,31 +18,35 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 {
 	public class ManaCostQuestionGenerator : IQuestionGenerator
 	{
-		private readonly ApplicationDbContext _context;
+		private readonly IQuestionRepository _questionRepository;
+		private readonly IHeroRepository _heroRepository;
 		private readonly QuestionSettings _questionSettings;
 		private readonly RandomHelper _randomHelper;
 		private readonly ILogger _logger;
+
 		private readonly Random _random = new Random();
 
 		public ManaCostQuestionGenerator(
-			//ApplicationDbContext context,
+			IQuestionRepository questionRepository,
+			IHeroRepository heroRepository,
 			IOptions<QuestionSettings> questionSettings,
 			RandomHelper randomHelper,
 			ILogger logger)
 		{
-			//_context = context;
-			_randomHelper = randomHelper;
+			_questionRepository = questionRepository;
+			_heroRepository = heroRepository;
 			_questionSettings = questionSettings.Value;
+			_randomHelper = randomHelper;
 			_logger = logger.ForContext<ManaCostQuestionGenerator>();
 		}
 
 		public async Task GenerateQuestions()
 		{
-			IEnumerable<Ability> abilities = await _context.Abilities.Include(x => x.Hero).ToListAsync();
+			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
-			foreach (Ability ability in abilities)
+			foreach (Ability ability in heroes.SelectMany(x => x.Abilities))
 			{
-				IEnumerable<Question> abilityQuestions = await GetQuestionsForAbility(ability.Id);
+				IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
 				IEnumerable<Question> manaCostQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityManaCost);
 
 				if (manaCostQuestionsForAbility.Any())
@@ -51,34 +56,39 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
 						if (correctAnswer == null)
 						{
-							_context.Remove(question);
+							await _questionRepository.DeleteQuestion(question.Id);
 							continue;
 						}
 
-						RegenerateManaCostQuestionIfOutdated(question, ability);
+						RebuildManaCostQuestionIfOutdated(question, ability);
+
 						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
 						{
-							_context.Questions.Remove(question);
+							await _questionRepository.DeleteQuestion(question.Id);
+							continue;
 						}
+
+						await _questionRepository.UpdateQuestion(question);
 					}
 				}
 				else
 				{
-					Question question = GenerateNewManaCostQuestion(ability);
-					if (!question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
+					Question question = BuildNewManaCostQuestion(ability);
+
+					if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
 					{
-						_context.Questions.Add(question);
+						continue;
 					}
+
+					await _questionRepository.CreateQuestion(question);
 				}
 			}
-
-			await _context.SaveChangesAsync();
 		}
 
 		/// <summary>
 		/// Regenerates the <see cref="Question"/> and the <see cref="Answer"/>s if the correct <see cref="Answer"/> is no longer the same.
 		/// </summary>
-		private void RegenerateManaCostQuestionIfOutdated(Question question, Ability ability)
+		private void RebuildManaCostQuestionIfOutdated(Question question, Ability ability)
 		{
 			Answer correctAnswer = question.Answers.Single(x => x.Correct);
 			if (correctAnswer.Text == ability.ManaCost)
@@ -87,7 +97,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				return;
 			}
 
-			_context.RemoveRange(question.Answers);
+			question.Answers = new List<Answer>();
 
 			question.Answers.Add(new Answer()
 			{
@@ -99,15 +109,15 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			int slashes = ability.ManaCost.Count(x => x == '/');
 
 			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
-			question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, 0));
-			question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, 2));
-			question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, 3));
+			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 0));
+			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 2));
+			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 3));
 
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
-				question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, slashes));
+				question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, slashes));
 			}
 
 			question.Text = $"What is the mana cost of {ability.Name}?";
@@ -116,9 +126,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <summary>
 		/// Generates a new <see cref="Question"/> and a variety of answers about the mana cost of the given <see cref="Ability"/>.
 		/// </summary>
-		/// <param name="ability"></param>
-		/// <returns></returns>
-		private Question GenerateNewManaCostQuestion(Ability ability)
+		private Question BuildNewManaCostQuestion(Ability ability)
 		{
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
 			string questionKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-manacost".ToLowerInvariant();
@@ -138,9 +146,9 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				Text = ability.ManaCost
 			});
 
-			question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, 0));
-			question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, 2));
-			question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, 3));
+			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 0));
+			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 2));
+			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 3));
 			
 			int slashes = ability.ManaCost.Count(x => x == '/');
 
@@ -148,7 +156,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
-				question.Answers.Add(GenerateIncorrectManaCostAnswer(ability, question, slashes));
+				question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, slashes));
 			}
 
 			return question;
@@ -160,7 +168,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <param name="ability">The <see cref="Ability"/> to generate an incorrect mana cost for.</param>
 		/// <param name="question">The <see cref="Question"/> that the answer will belong to.</param>
 		/// <param name="slashes">The number of forward slashes the incorrect mana cost should contain.</param>
-		private Answer GenerateIncorrectManaCostAnswer(Ability ability, Question question, int slashes)
+		private Answer BuildIncorrectManaCostAnswer(Ability ability, Question question, int slashes)
 		{
 			const int MaximumAttempts = 10;
 			for (int attemptNumber = 0; attemptNumber < MaximumAttempts; attemptNumber++)
@@ -271,17 +279,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 
 			_logger.Warning("Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");
 			return null;
-		}
-
-		/// <summary>
-		/// Gets all the questions that relate to the ability with the given ID.
-		/// </summary>
-		private async Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId)
-		{
-			return await _context.Questions
-				.Include(x => x.Answers)
-				.Where(x => x.AbilityId == abilityId)
-				.ToListAsync();
 		}
 	}
 }
