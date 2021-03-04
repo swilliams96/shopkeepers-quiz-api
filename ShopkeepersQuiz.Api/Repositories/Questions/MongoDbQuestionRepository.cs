@@ -25,10 +25,12 @@ namespace ShopkeepersQuiz.Api.Repositories.Questions
 				.ToListAsync();
 		}
 
-		public async Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId)
-		{
-			return await _questions.Find(x => x.AbilityId == abilityId).ToListAsync();
-		}
+		public async Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId) =>
+			await _questions
+				.Find(x =>
+					x.Ability != null
+					&& x.Ability.Id == abilityId)
+				.ToListAsync();
 
 		public async Task<Question> CreateQuestion(Question question)
 		{

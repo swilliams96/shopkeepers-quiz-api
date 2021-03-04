@@ -44,43 +44,46 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		{
 			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
-			foreach (Ability ability in heroes.SelectMany(x => x.Abilities))
+			foreach (Hero hero in heroes)
 			{
-				IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
-				IEnumerable<Question> manaCostQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityManaCost);
-
-				if (manaCostQuestionsForAbility.Any())
+				foreach (Ability ability in hero.Abilities)
 				{
-					foreach (Question question in manaCostQuestionsForAbility)
+					IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
+					IEnumerable<Question> manaCostQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityManaCost);
+
+					if (manaCostQuestionsForAbility.Any())
 					{
-						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-						if (correctAnswer == null)
+						foreach (Question question in manaCostQuestionsForAbility)
 						{
-							await _questionRepository.DeleteQuestion(question.Id);
+							Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+							if (correctAnswer == null)
+							{
+								await _questionRepository.DeleteQuestion(question.Id);
+								continue;
+							}
+
+							RebuildManaCostQuestionIfOutdated(question, ability);
+
+							if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
+							{
+								await _questionRepository.DeleteQuestion(question.Id);
+								continue;
+							}
+
+							await _questionRepository.UpdateQuestion(question);
+						}
+					}
+					else
+					{
+						Question question = BuildNewManaCostQuestion(ability, hero.Name);
+
+						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
+						{
 							continue;
 						}
 
-						RebuildManaCostQuestionIfOutdated(question, ability);
-
-						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
-						{
-							await _questionRepository.DeleteQuestion(question.Id);
-							continue;
-						}
-
-						await _questionRepository.UpdateQuestion(question);
+						await _questionRepository.CreateQuestion(question);
 					}
-				}
-				else
-				{
-					Question question = BuildNewManaCostQuestion(ability);
-
-					if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
-					{
-						continue;
-					}
-
-					await _questionRepository.CreateQuestion(question);
 				}
 			}
 		}
@@ -126,10 +129,10 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <summary>
 		/// Generates a new <see cref="Question"/> and a variety of answers about the mana cost of the given <see cref="Ability"/>.
 		/// </summary>
-		private Question BuildNewManaCostQuestion(Ability ability)
+		private Question BuildNewManaCostQuestion(Ability ability, string heroName)
 		{
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
-			string questionKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-manacost".ToLowerInvariant();
+			string questionKey = $"{regex.Replace(heroName, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-manacost".ToLowerInvariant();
 
 			Question question = new Question()
 			{

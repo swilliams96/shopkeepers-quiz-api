@@ -120,7 +120,6 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 					_logger.Information($"Generating questions using {generator.GetType().Name}...");
 					await generator.GenerateQuestions();
 				}
-
 			}
 			catch (Exception ex)
 			{

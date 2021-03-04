@@ -44,43 +44,46 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		{
 			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
-			foreach (Ability ability in heroes.SelectMany(x => x.Abilities))
+			foreach (Hero hero in heroes)
 			{
-				IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
-				IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
-
-				if (cooldownQuestionsForAbility.Any())
+				foreach (Ability ability in hero.Abilities)
 				{
-					foreach (Question question in cooldownQuestionsForAbility)
+					IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
+					IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
+
+					if (cooldownQuestionsForAbility.Any())
 					{
-						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-						if (correctAnswer == null)
+						foreach (Question question in cooldownQuestionsForAbility)
 						{
-							await _questionRepository.DeleteQuestion(question.Id);
+							Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+							if (correctAnswer == null)
+							{
+								await _questionRepository.DeleteQuestion(question.Id);
+								continue;
+							}
+
+							RebuildCooldownQuestionIfOutdated(question, ability);
+
+							if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
+							{
+								await _questionRepository.DeleteQuestion(question.Id);
+								continue;
+							}
+
+							await _questionRepository.UpdateQuestion(question);
+						}
+					}
+					else
+					{
+						Question question = BuildNewCooldownQuestion(ability, hero.Name);
+
+						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
+						{
 							continue;
 						}
 
-						RebuildCooldownQuestionIfOutdated(question, ability);
-
-						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
-						{
-							await _questionRepository.DeleteQuestion(question.Id);
-							continue;
-						}
-
-						await _questionRepository.UpdateQuestion(question);
+						await _questionRepository.CreateQuestion(question);
 					}
-				}
-				else
-				{
-					Question question = BuildNewCooldownQuestion(ability);
-
-					if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
-					{
-						continue;
-					}
-
-					await _questionRepository.CreateQuestion(question);
 				}
 			}
 		}
@@ -126,12 +129,10 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <summary>
 		/// Generates a new <see cref="Question"/> and a variety of answers about the cooldown of the given <see cref="Ability"/>.
 		/// </summary>
-		/// <param name="ability"></param>
-		/// <returns></returns>
-		private Question BuildNewCooldownQuestion(Ability ability)
+		private Question BuildNewCooldownQuestion(Ability ability, string heroName)
 		{
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
-			string abilityKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-cooldown".ToLowerInvariant();
+			string abilityKey = $"{regex.Replace(heroName, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-cooldown".ToLowerInvariant();
 
 			Question question = new Question()
 			{

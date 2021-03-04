@@ -17,8 +17,6 @@ namespace ShopkeepersQuiz.Api.Models.Questions
 
 		public QuestionType Type { get; set; }
 
-		public Guid? AbilityId => Ability?.Id;
-
 		public ICollection<Answer> Answers { get; set; } = new List<Answer>();
 
 		public Ability Ability { get; set; }
