@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Serilog;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
-using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Repositories.Heroes;
+using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
@@ -16,57 +18,77 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 {
 	public class CooldownQuestionGenerator : IQuestionGenerator
 	{
-		private readonly ApplicationDbContext _context;
+		private readonly IQuestionRepository _questionRepository;
+		private readonly IHeroRepository _heroRepository;
 		private readonly QuestionSettings _questionSettings;
 		private readonly RandomHelper _randomHelper;
+		private readonly ILogger _logger;
+
 		private readonly Random _random = new Random();
 
 		public CooldownQuestionGenerator(
-			//ApplicationDbContext context,
+			IQuestionRepository questionRepository,
+			IHeroRepository heroRepository,
 			IOptions<QuestionSettings> questionSettings,
-			RandomHelper randomHelper)
+			RandomHelper randomHelper,
+			ILogger logger)
 		{
-			//_context = context;
+			_questionRepository = questionRepository;
+			_heroRepository = heroRepository;
 			_questionSettings = questionSettings.Value;
 			_randomHelper = randomHelper;
+			_logger = logger.ForContext<CooldownQuestionGenerator>();
 		}
 
 		public async Task GenerateQuestions()
 		{
-			IEnumerable<Ability> abilities = await _context.Abilities.Include(x => x.Hero).ToListAsync();
+			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
-			foreach (Ability ability in abilities)
+			foreach (Ability ability in heroes.SelectMany(x => x.Abilities))
 			{
-				IEnumerable<Question> abilityQuestions = await GetQuestionsForAbility(ability.Id);
+				IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
 				IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
 
-				if (abilityQuestions.Any())
+				if (cooldownQuestionsForAbility.Any())
 				{
 					foreach (Question question in cooldownQuestionsForAbility)
 					{
 						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
 						if (correctAnswer == null)
 						{
-							_context.Remove(question);
+							await _questionRepository.DeleteQuestion(question.Id);
 							continue;
 						}
 
-						RegenerateCooldownQuestionIfOutdated(question, ability);
+						RebuildCooldownQuestionIfOutdated(question, ability);
+
+						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
+						{
+							await _questionRepository.DeleteQuestion(question.Id);
+							continue;
+						}
+
+						await _questionRepository.UpdateQuestion(question);
 					}
 				}
 				else
 				{
-					_context.Questions.Add(GenerateNewCooldownQuestion(ability));
+					Question question = BuildNewCooldownQuestion(ability);
+
+					if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
+					{
+						continue;
+					}
+
+					await _questionRepository.CreateQuestion(question);
 				}
 			}
-
-			await _context.SaveChangesAsync();
 		}
 
 		/// <summary>
 		/// Regenerates the <see cref="Question"/> and the <see cref="Answer"/>s if the correct <see cref="Answer"/> is no longer the same.
 		/// </summary>
-		private void RegenerateCooldownQuestionIfOutdated(Question question, Ability ability)
+		private void RebuildCooldownQuestionIfOutdated(Question question, Ability ability)
 		{
 			Answer correctAnswer = question.Answers.Single(x => x.Correct);
 			if (correctAnswer.Text == ability.Cooldown)
@@ -75,7 +97,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				return;
 			}
 
-			_context.RemoveRange(question.Answers);
+			question.Answers = new List<Answer>();
 
 			question.Answers.Add(new Answer()
 			{
@@ -87,15 +109,15 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			int slashes = ability.Cooldown.Count(x => x == '/');
 
 			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 0));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 2));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 3));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 0));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 2));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 3));
 
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
-				question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, slashes));
+				question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, slashes));
 			}
 
 			question.Text = $"What is the cooldown of {ability.Name}?";
@@ -106,7 +128,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// </summary>
 		/// <param name="ability"></param>
 		/// <returns></returns>
-		private Question GenerateNewCooldownQuestion(Ability ability)
+		private Question BuildNewCooldownQuestion(Ability ability)
 		{
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
 			string abilityKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-cooldown".ToLowerInvariant();
@@ -126,9 +148,9 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				Text = ability.Cooldown
 			});
 
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 0));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 2));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 3));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 0));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 2));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 3));
 			
 			int slashes = ability.Cooldown.Count(x => x == '/');
 
@@ -136,7 +158,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
-				question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, slashes));
+				question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, slashes));
 			}
 
 			return question;
@@ -148,7 +170,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <param name="ability">The <see cref="Ability"/> to generate an incorrect cooldown for.</param>
 		/// <param name="question">The <see cref="Question"/> that the answer will belong to.</param>
 		/// <param name="slashes">The number of forward slashes the incorrect cooldown should contain.</param>
-		private Answer GenerateIncorrectCooldownAnswer(Ability ability, Question question, int slashes)
+		private Answer BuildIncorrectCooldownAnswer(Ability ability, Question question, int slashes)
 		{
 			const int MaximumAttempts = 10;
 			for (int attemptNumber = 0; attemptNumber < MaximumAttempts; attemptNumber++)
@@ -256,17 +278,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			}
 
 			throw new InvalidOperationException($"Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");
-		}
-
-		/// <summary>
-		/// Gets all the questions that relate to the ability with the given ID.
-		/// </summary>
-		private async Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId)
-		{
-			return await _context.Questions
-				.Include(x => x.Answers)
-				.Where(x => x.AbilityId == abilityId)
-				.ToListAsync();
 		}
 	}
 }

@@ -239,7 +239,6 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 					decimal correctAnswerMinMaxDifference = maximumValue - minimumValue;
 					decimal correctAnswerInterval = correctAnswerMinMaxDifference / manaCostPartsCount;
 
-					// todo
 					int interval = startingValue switch
 					{
 						_ when minimumValue <= 20 => _randomHelper.ChooseRandomOption(4, 5, 5, 5),
