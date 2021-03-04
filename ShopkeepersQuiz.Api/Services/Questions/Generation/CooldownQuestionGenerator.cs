@@ -22,11 +22,11 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		private readonly Random _random = new Random();
 
 		public CooldownQuestionGenerator(
-			ApplicationDbContext context,
+			//ApplicationDbContext context,
 			IOptions<QuestionSettings> questionSettings,
 			RandomHelper randomHelper)
 		{
-			_context = context;
+			//_context = context;
 			_questionSettings = questionSettings.Value;
 			_randomHelper = randomHelper;
 		}
@@ -115,7 +115,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			{
 				Type = QuestionType.AbilityCooldown,
 				Text = $"What is the cooldown of {ability.Name}?",
-				AbilityId = ability.Id,
+				Ability = ability,
 				Key = abilityKey,
 				Answers = new List<Answer>()
 			};
@@ -261,7 +261,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <summary>
 		/// Gets all the questions that relate to the ability with the given ID.
 		/// </summary>
-		private async Task<IEnumerable<Question>> GetQuestionsForAbility(int abilityId)
+		private async Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId)
 		{
 			return await _context.Questions
 				.Include(x => x.Answers)

@@ -1,30 +1,25 @@
-﻿using ShopkeepersQuiz.Api.Models.Answers;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.GameEntities;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShopkeepersQuiz.Api.Models.Questions
 {
 	public class Question
 	{
-		[Key]
-		[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-		public int Id { get; set; }
+		[BsonId]
+		public Guid Id { get; set; }
 
-		[Required]
 		public string Key { get; set; }
 
-		[Required]
 		public string Text { get; set; }
 
 		public QuestionType Type { get; set; }
 
-		public int? AbilityId { get; set; }
+		public Guid? AbilityId => Ability?.Id;
 
-		// Navigation Properties
-
-		public ICollection<Answer> Answers { get; set; }
+		public ICollection<Answer> Answers { get; set; } = new List<Answer>();
 
 		public Ability Ability { get; set; }
 	}

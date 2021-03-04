@@ -1,9 +1,9 @@
-﻿using Newtonsoft.Json;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using Newtonsoft.Json;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Questions;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
@@ -30,18 +30,16 @@ namespace ShopkeepersQuiz.Api.Models.Queues
 			// Necessary for EF Core and Newtonsoft
 		}
 
-		[Key]
+		[BsonId]
 		public Guid Id { get; set; }
 
-		public int QuestionId { get; set; }
+		public Guid QuestionId { get; set; }
 
 		public DateTime StartTimeUtc { get; set; }
 
 		public DateTime EndTimeUtc { get; set; }
 
-		public int[] IncorrectAnswerIds { get; set; }
-
-		// Navigation Properties
+		public Guid[] IncorrectAnswerIds { get; set; }
 
 		public Question Question { get; set; }
 
@@ -49,14 +47,17 @@ namespace ShopkeepersQuiz.Api.Models.Queues
 
 		[NotMapped]
 		[JsonIgnore]
+		[BsonIgnore]
 		public Answer CorrectAnswer => Question?.Answers?.SingleOrDefault(x => x.Correct);
 
 		[NotMapped]
 		[JsonIgnore]
-		public IEnumerable<Answer> IncorrectAnswers => Question?.Answers?.Where(x => IncorrectAnswerIds.Contains(x.Id)) ?? Enumerable.Empty<Answer>();
+		[BsonIgnore]
+		public IEnumerable<Answer> IncorrectAnswers => Question?.Answers?.Where(x => IncorrectAnswerIds?.Contains(x.Id) ?? false) ?? Enumerable.Empty<Answer>();
 
 		[NotMapped]
 		[JsonIgnore]
+		[BsonIgnore]
 		public IEnumerable<Answer> AllAnswers => IncorrectAnswers.Append(CorrectAnswer);
 
 		/// <summary>
@@ -64,10 +65,11 @@ namespace ShopkeepersQuiz.Api.Models.Queues
 		/// </summary>
 		private void ChooseNewIncorrectAnswers()
 		{
-			int answerCount = Question.Answers?.Count ?? 0;
-			if (answerCount < IncorrectAnswerCount)
+			int incorrectAnswerCount = Question.Answers?.Where(x => !x.Correct).Count() ?? 0;
+			if (incorrectAnswerCount < IncorrectAnswerCount)
 			{
-				throw new InvalidOperationException($"The Question supplied contains {answerCount} Answers but a minimum of {IncorrectAnswerCount} Answers is expected.");
+				throw new InvalidOperationException(
+					$"The Question supplied contains {incorrectAnswerCount} incorrect Answers but a minimum of {IncorrectAnswerCount} incorrect Answers were expected.");
 			}
 
 			IncorrectAnswerIds = Question.Answers

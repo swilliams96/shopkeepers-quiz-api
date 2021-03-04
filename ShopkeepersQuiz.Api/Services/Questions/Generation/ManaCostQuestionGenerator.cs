@@ -24,12 +24,12 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		private readonly Random _random = new Random();
 
 		public ManaCostQuestionGenerator(
-			ApplicationDbContext context,
+			//ApplicationDbContext context,
 			IOptions<QuestionSettings> questionSettings,
 			RandomHelper randomHelper,
 			ILogger logger)
 		{
-			_context = context;
+			//_context = context;
 			_randomHelper = randomHelper;
 			_questionSettings = questionSettings.Value;
 			_logger = logger.ForContext<ManaCostQuestionGenerator>();
@@ -121,14 +121,14 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		private Question GenerateNewManaCostQuestion(Ability ability)
 		{
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
-			string abilityKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-manacost".ToLowerInvariant();
+			string questionKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-manacost".ToLowerInvariant();
 
 			Question question = new Question()
 			{
 				Type = QuestionType.AbilityManaCost,
 				Text = $"What is the mana cost of {ability.Name}?",
-				AbilityId = ability.Id,
-				Key = abilityKey,
+				Ability = ability,
+				Key = questionKey,
 				Answers = new List<Answer>()
 			};
 
@@ -276,7 +276,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <summary>
 		/// Gets all the questions that relate to the ability with the given ID.
 		/// </summary>
-		private async Task<IEnumerable<Question>> GetQuestionsForAbility(int abilityId)
+		private async Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId)
 		{
 			return await _context.Questions
 				.Include(x => x.Answers)

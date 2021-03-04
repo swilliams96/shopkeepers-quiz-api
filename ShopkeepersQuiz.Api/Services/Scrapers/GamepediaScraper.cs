@@ -7,6 +7,7 @@ using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Heroes;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -211,7 +212,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 				!heroes.Any(x => x.Name.Equals(existingHero.Name, StringComparison.InvariantCultureIgnoreCase)));
 
 			// Remove missing heroes
-			await _heroRepository.DeleteHeroes(notFoundHeroes.Select(x => x.Id.ToString()));
+			await _heroRepository.DeleteHeroes(notFoundHeroes.Select(x => x.Id));
 
 			// Add new heroes
 			await _heroRepository.CreateHeroes(unsavedHeroes.OrderBy(x => x.Name));
@@ -233,7 +234,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 
 				IEnumerable<Ability> removedHeroAbilities = Enumerable.Empty<Ability>();
 
-				foreach (Ability ability in hero.Abilities)
+				foreach (Ability ability in hero.Abilities ??= new List<Ability>())
 				{
 					Ability matchingScrapedAbility = scrapedHeroAbilities.SingleOrDefault(x => x.Name == ability.Name);
 					if (matchingScrapedAbility != null)
@@ -260,6 +261,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 					if (!hero.Abilities.Any(x => x.Name == scrapedAbility.Name))
 					{
 						// Add missing abilities to the hero
+						scrapedAbility.Id = Guid.NewGuid();
 						hero.Abilities.Add(scrapedAbility);
 					}
 				}

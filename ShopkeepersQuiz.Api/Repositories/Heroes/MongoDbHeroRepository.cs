@@ -25,18 +25,32 @@ namespace ShopkeepersQuiz.Api.Repositories.Heroes
 
 		public async Task<IEnumerable<Hero>> CreateHeroes(IEnumerable<Hero> heroes)
 		{
-			await _heroes.InsertManyAsync(heroes, new InsertManyOptions() { IsOrdered = true });
+			if (heroes?.Any() ?? false)
+			{
+				await _heroes.InsertManyAsync(heroes, new InsertManyOptions() { IsOrdered = true });
+			}
+
 			return heroes;
 		}
 
-		public async Task DeleteHeroes(IEnumerable<string> heroIds)
+		public async Task DeleteHeroes(IEnumerable<Guid> heroIds)
 		{
+			if (!(heroIds?.Any() ?? false))
+			{
+				return;
+			}
+
 			var filter = Builders<Hero>.Filter.In(nameof(Hero.Id), heroIds);
 			await _heroes.DeleteManyAsync(filter);
 		}
 
 		public async Task<Hero> UpdateHero(Hero hero)
 		{
+			if (hero?.Id == null || hero?.Id == default(Guid))
+			{
+				throw new ArgumentException("Hero is null or does not have an assigned ID");
+			}
+
 			await _heroes.ReplaceOneAsync(x => x.Id == hero.Id, hero);
 			return hero;
 		}

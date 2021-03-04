@@ -129,7 +129,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			finally
 			{
 				_currentlyRunning = false;
-				_logger.Information("Background task complete!");
+				_logger.Information("Background task complete.");
 			}
 		}
 	}

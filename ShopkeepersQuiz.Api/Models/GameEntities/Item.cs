@@ -1,11 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShopkeepersQuiz.Api.Models.GameEntities
 {
 	public class Item
 	{
-		[Key]
-		public int Id { get; set; }
+		[BsonId]
+		public Guid Id { get; set; }
 
 		[Required]
 		public string Name { get; set; }

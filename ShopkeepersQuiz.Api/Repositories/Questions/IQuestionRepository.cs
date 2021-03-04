@@ -1,4 +1,5 @@
 ﻿using ShopkeepersQuiz.Api.Models.Questions;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -15,6 +16,6 @@ namespace ShopkeepersQuiz.Api.Repositories.Questions
 		/// <summary>
 		/// Gets all the questions that relate to the ability with the given ID.
 		/// </summary>
-		public Task<IEnumerable<Question>> GetQuestionsForAbility(int abilityId);
+		public Task<IEnumerable<Question>> GetQuestionsForAbility(Guid abilityId);
 	}
 }

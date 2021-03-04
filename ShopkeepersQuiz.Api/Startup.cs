@@ -40,7 +40,7 @@ namespace ShopkeepersQuiz.Api
 
 			services.AddMongoDb(Configuration);
 
-			services.AddDbContext<ApplicationDbContext>();
+			//services.AddDbContext<ApplicationDbContext>();
 
 			services.AddMemoryCache();
 
@@ -95,9 +95,9 @@ namespace ShopkeepersQuiz.Api
 		/// </summary>
 		private void EnsureDatabaseMigrated(IApplicationBuilder app)
 		{
-			using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
-			using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-			context.Database.Migrate();
+			//using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
+			//using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			//context.Database.Migrate();
 		}
 
 		/// <summary>
