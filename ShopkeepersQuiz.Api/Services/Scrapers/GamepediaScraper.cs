@@ -1,13 +1,10 @@
 ﻿using Flurl;
 using HtmlAgilityPack;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ShopkeepersQuiz.Api.Models.GameEntities;
-using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Heroes;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -89,11 +86,9 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 			}
 
 			return heroAnchorLinkNodes
-				.Select(heroLink => new Hero()
-				{
-					Name = heroLink.Attributes["title"].DeEntitizeValue,
-					WikiPageUrl = Url.Combine(BaseUrl, heroLink.Attributes["href"].Value)
-				})
+				.Select(heroLink => new Hero(
+					name: heroLink.Attributes["title"].DeEntitizeValue,
+					wikiPageUrl: Url.Combine(BaseUrl, heroLink.Attributes["href"].Value)))
 				.OrderBy(hero => hero.Name);
 		}
 
@@ -139,14 +134,12 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 						continue;
 					}
 
-					abilities.Add(new Ability()
-					{
-						Name = abilityName,
-						HeroId = hero.Id,
-						ImageUrl = GetImageUrlForAbility(heroAbilityNode),
-						ManaCost = GetManaCostForAbility(heroAbilityNode),
-						Cooldown = GetCooldownForAbility(heroAbilityNode),
-					});
+					abilities.Add(new Ability(
+						name: abilityName,
+						heroId: hero.Id,
+						imageUrl: GetImageUrlForAbility(heroAbilityNode),
+						manaCost: GetManaCostForAbility(heroAbilityNode),
+						cooldown: GetCooldownForAbility(heroAbilityNode)));
 				}
 
 				// Add a delay after each request so we don't accidentally run a denial-of-service attack!
@@ -172,7 +165,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		private string GetManaCostForAbility(HtmlNode abilityNode)
 		{
 			string manaCost = HttpUtility.HtmlDecode(
-				abilityNode.SelectSingleNode(".//a[@href='/Mana']/../parent::div")?.GetDirectInnerText());
+				abilityNode.SelectSingleNode(".//a[@href='/wiki/Mana']/../parent::div")?.GetDirectInnerText());
 
 			return string.IsNullOrWhiteSpace(manaCost) ? "0" : manaCost.Trim();
 		}
@@ -184,7 +177,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		private string GetCooldownForAbility(HtmlNode abilityNode)
 		{
 			string cooldown = HttpUtility.HtmlDecode(
-				abilityNode.SelectSingleNode(".//a[@href='/Cooldown']/../parent::div")?.GetDirectInnerText());
+				abilityNode.SelectSingleNode(".//a[@href='/wiki/Cooldown']/../parent::div")?.GetDirectInnerText());
 
 			int bracketIndex = cooldown?.IndexOf("(") ?? -1;
 			if (bracketIndex != -1)

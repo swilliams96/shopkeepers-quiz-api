@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Serilog;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
@@ -93,23 +92,17 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// </summary>
 		private void RebuildManaCostQuestionIfOutdated(Question question, Ability ability)
 		{
-			Answer correctAnswer = question.Answers.Single(x => x.Correct);
-			if (correctAnswer.Text == ability.ManaCost)
+			Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+			if (correctAnswer?.Text == ability.ManaCost)
 			{
 				// Ability hasn't changed the mana cost so no need to regenerate the question
 				return;
 			}
 
-			question.Answers = new List<Answer>();
-
-			question.Answers.Add(new Answer()
+			question.Answers = new List<Answer>()
 			{
-				Correct = true,
-				QuestionId = question.Id,
-				Text = ability.ManaCost
-			});
-
-			int slashes = ability.ManaCost.Count(x => x == '/');
+				new Answer(ability.ManaCost, true)
+			};
 
 			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
 			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 0));
@@ -117,6 +110,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 3));
 
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
+			int slashes = ability.ManaCost.Count(x => x == '/');
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
@@ -134,28 +128,21 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
 			string questionKey = $"{regex.Replace(heroName, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-manacost".ToLowerInvariant();
 
-			Question question = new Question()
-			{
-				Type = QuestionType.AbilityManaCost,
-				Text = $"What is the mana cost of {ability.Name}?",
-				Ability = ability,
-				Key = questionKey,
-				Answers = new List<Answer>()
-			};
+			Question question = new Question(
+				type: QuestionType.AbilityManaCost,
+				text: $"What is the mana cost of {ability.Name}?",
+				ability: ability,
+				key: questionKey);
 
-			question.Answers.Add(new Answer()
-			{
-				Correct = true,
-				Text = ability.ManaCost
-			});
+			question.Answers.Add(new Answer(ability.ManaCost, true));
 
+			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
 			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 0));
 			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 2));
 			question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, 3));
 			
-			int slashes = ability.ManaCost.Count(x => x == '/');
-
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
+			int slashes = ability.ManaCost.Count(x => x == '/');
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
@@ -271,12 +258,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 					continue;
 				}
 
-				return new Answer()
-				{
-					Correct = false,
-					QuestionId = question.Id,
-					Text = answerText
-				};
+				return new Answer(answerText, false);
 			}
 
 			_logger.Warning("Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");

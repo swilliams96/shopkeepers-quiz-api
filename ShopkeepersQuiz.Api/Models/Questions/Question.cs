@@ -8,6 +8,15 @@ namespace ShopkeepersQuiz.Api.Models.Questions
 {
 	public class Question
 	{
+		public Question(string key, string text, QuestionType type, Ability ability)
+		{
+			Id = Guid.NewGuid();
+			Key = key;
+			Text = text;
+			Type = type;
+			Ability = ability;
+		}
+
 		[BsonId]
 		public Guid Id { get; set; }
 

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Serilog;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using System;
 
@@ -23,6 +24,8 @@ namespace ShopkeepersQuiz.Api.Extensions
 
 			var mongoClient = new MongoClient(mongoConnectionString);
 			var mongoDatabase = mongoClient.GetDatabase(mongoDatabaseName);
+
+			Log.Information("Attempting to connect to MongoDB database: {DatabaseName}", mongoDatabaseName);
 
 			bool connectionSuccessful = mongoDatabase.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait(5000);
 			if (!connectionSuccessful)

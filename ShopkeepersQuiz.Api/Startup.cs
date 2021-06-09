@@ -1,14 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MongoDB.Driver;
 using Serilog;
 using ShopkeepersQuiz.Api.Extensions;
 using ShopkeepersQuiz.Api.Models.Configuration;
-using ShopkeepersQuiz.Api.Repositories.Context;
 using ShopkeepersQuiz.Api.Repositories.Heroes;
 using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Repositories.QueueEntries;

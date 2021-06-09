@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Serilog;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
@@ -93,23 +92,17 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// </summary>
 		private void RebuildCooldownQuestionIfOutdated(Question question, Ability ability)
 		{
-			Answer correctAnswer = question.Answers.Single(x => x.Correct);
-			if (correctAnswer.Text == ability.Cooldown)
+			Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+			if (correctAnswer?.Text == ability.Cooldown)
 			{
 				// Ability hasn't changed the cooldown so no need to regenerate the question
 				return;
 			}
 
-			question.Answers = new List<Answer>();
-
-			question.Answers.Add(new Answer()
+			question.Answers = new List<Answer>()
 			{
-				Correct = true,
-				QuestionId = question.Id,
-				Text = ability.Cooldown
-			});
-
-			int slashes = ability.Cooldown.Count(x => x == '/');
+				new Answer(ability.Cooldown, true)
+			};
 
 			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
 			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 0));
@@ -117,6 +110,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 3));
 
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
+			int slashes = ability.Cooldown.Count(x => x == '/');
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
@@ -134,28 +128,21 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
 			string abilityKey = $"{regex.Replace(heroName, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-cooldown".ToLowerInvariant();
 
-			Question question = new Question()
-			{
-				Type = QuestionType.AbilityCooldown,
-				Text = $"What is the cooldown of {ability.Name}?",
-				Ability = ability,
-				Key = abilityKey,
-				Answers = new List<Answer>()
-			};
+			Question question = new Question(
+				type: QuestionType.AbilityCooldown,
+				text: $"What is the cooldown of {ability.Name}?",
+				ability: ability,
+				key: abilityKey);
 
-			question.Answers.Add(new Answer()
-			{
-				Correct = true,
-				Text = ability.Cooldown
-			});
+			question.Answers.Add(new Answer(ability.Cooldown, true));
 
+			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
 			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 0));
 			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 2));
 			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 3));
 			
-			int slashes = ability.Cooldown.Count(x => x == '/');
-
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
+			int slashes = ability.Cooldown.Count(x => x == '/');
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
@@ -270,12 +257,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 					continue;
 				}
 
-				return new Answer()
-				{
-					Correct = false,
-					QuestionId = question.Id,
-					Text = answerText
-				};
+				return new Answer(answerText, false);
 			}
 
 			throw new InvalidOperationException($"Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");
