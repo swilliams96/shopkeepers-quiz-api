@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using ShopkeepersQuiz.Api.Extensions;
 using ShopkeepersQuiz.Api.Models.Configuration;
-using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Repositories.Heroes;
 using ShopkeepersQuiz.Api.Repositories.Questions;
-using ShopkeepersQuiz.Api.Repositories.Queues;
+using ShopkeepersQuiz.Api.Repositories.QueueEntries;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Services.Questions.Generation;
 using ShopkeepersQuiz.Api.Services.Scrapers;
@@ -35,7 +35,9 @@ namespace ShopkeepersQuiz.Api
 
 			services.AddRouting(config => config.LowercaseUrls = true);
 
-			services.AddDbContext<ApplicationDbContext>();
+			services.AddMongoDb(Configuration);
+
+			//services.AddDbContext<ApplicationDbContext>();
 
 			services.AddMemoryCache();
 
@@ -88,11 +90,11 @@ namespace ShopkeepersQuiz.Api
 		/// <summary>
 		/// Ensures that the database is migrated fully using EF Core.
 		/// </summary>
-		private static void EnsureDatabaseMigrated(IApplicationBuilder app)
+		private void EnsureDatabaseMigrated(IApplicationBuilder app)
 		{
-			using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
-			using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-			context.Database.Migrate();
+			//using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
+			//using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			//context.Database.Migrate();
 		}
 
 		/// <summary>
@@ -109,8 +111,9 @@ namespace ShopkeepersQuiz.Api
 			services.AddScoped<IQuestionService, QuestionService>();
 
 			// App Repositories
-			services.AddTransient<IQuestionRepository, QuestionRepository>();
-			services.AddTransient<IQueueRepository, QueueRepository>();
+			services.AddTransient<IQuestionRepository, MongoDbQuestionRepository>();
+			services.AddTransient<IQueueEntryRepository, MongoDbQueueEntryRepository>();
+			services.AddTransient<IHeroRepository, MongoDbHeroRepository>();
 
 			// App Utilities
 			services.AddSingleton<RandomHelper>();

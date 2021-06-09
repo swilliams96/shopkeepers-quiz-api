@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace ShopkeepersQuiz.Api.Repositories.Queues
+namespace ShopkeepersQuiz.Api.Repositories.QueueEntries
 {
-	public interface IQueueRepository
+	public interface IQueueEntryRepository
 	{
 		/// <summary>
 		/// Retrieves all the <see cref="QueueEntry"/> entities that have a <see cref="QueueEntry.StartTimeUtc"/> in the future.

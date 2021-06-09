@@ -1,10 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
+using Serilog;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Models.Questions;
-using ShopkeepersQuiz.Api.Repositories.Context;
+using ShopkeepersQuiz.Api.Repositories.Heroes;
+using ShopkeepersQuiz.Api.Repositories.Questions;
 using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
@@ -16,86 +17,104 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 {
 	public class CooldownQuestionGenerator : IQuestionGenerator
 	{
-		private readonly ApplicationDbContext _context;
+		private readonly IQuestionRepository _questionRepository;
+		private readonly IHeroRepository _heroRepository;
 		private readonly QuestionSettings _questionSettings;
 		private readonly RandomHelper _randomHelper;
+		private readonly ILogger _logger;
+
 		private readonly Random _random = new Random();
 
 		public CooldownQuestionGenerator(
-			ApplicationDbContext context,
+			IQuestionRepository questionRepository,
+			IHeroRepository heroRepository,
 			IOptions<QuestionSettings> questionSettings,
-			RandomHelper randomHelper)
+			RandomHelper randomHelper,
+			ILogger logger)
 		{
-			_context = context;
+			_questionRepository = questionRepository;
+			_heroRepository = heroRepository;
 			_questionSettings = questionSettings.Value;
 			_randomHelper = randomHelper;
+			_logger = logger.ForContext<CooldownQuestionGenerator>();
 		}
 
 		public async Task GenerateQuestions()
 		{
-			IEnumerable<Ability> abilities = await _context.Abilities.Include(x => x.Hero).ToListAsync();
+			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
-			foreach (Ability ability in abilities)
+			foreach (Hero hero in heroes)
 			{
-				IEnumerable<Question> abilityQuestions = await GetQuestionsForAbility(ability.Id);
-				IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
-
-				if (abilityQuestions.Any())
+				foreach (Ability ability in hero.Abilities)
 				{
-					foreach (Question question in cooldownQuestionsForAbility)
+					IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
+					IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
+
+					if (cooldownQuestionsForAbility.Any())
 					{
-						Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-						if (correctAnswer == null)
+						foreach (Question question in cooldownQuestionsForAbility)
 						{
-							_context.Remove(question);
+							Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+							if (correctAnswer == null)
+							{
+								await _questionRepository.DeleteQuestion(question.Id);
+								continue;
+							}
+
+							RebuildCooldownQuestionIfOutdated(question, ability);
+
+							if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
+							{
+								await _questionRepository.DeleteQuestion(question.Id);
+								continue;
+							}
+
+							await _questionRepository.UpdateQuestion(question);
+						}
+					}
+					else
+					{
+						Question question = BuildNewCooldownQuestion(ability, hero.Name);
+
+						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
+						{
 							continue;
 						}
 
-						RegenerateCooldownQuestionIfOutdated(question, ability);
+						await _questionRepository.CreateQuestion(question);
 					}
 				}
-				else
-				{
-					_context.Questions.Add(GenerateNewCooldownQuestion(ability));
-				}
 			}
-
-			await _context.SaveChangesAsync();
 		}
 
 		/// <summary>
 		/// Regenerates the <see cref="Question"/> and the <see cref="Answer"/>s if the correct <see cref="Answer"/> is no longer the same.
 		/// </summary>
-		private void RegenerateCooldownQuestionIfOutdated(Question question, Ability ability)
+		private void RebuildCooldownQuestionIfOutdated(Question question, Ability ability)
 		{
-			Answer correctAnswer = question.Answers.Single(x => x.Correct);
-			if (correctAnswer.Text == ability.Cooldown)
+			Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+			if (correctAnswer?.Text == ability.Cooldown)
 			{
 				// Ability hasn't changed the cooldown so no need to regenerate the question
 				return;
 			}
 
-			_context.RemoveRange(question.Answers);
-
-			question.Answers.Add(new Answer()
+			question.Answers = new List<Answer>()
 			{
-				Correct = true,
-				QuestionId = question.Id,
-				Text = ability.Cooldown
-			});
-
-			int slashes = ability.Cooldown.Count(x => x == '/');
+				new Answer(ability.Cooldown, true)
+			};
 
 			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 0));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 2));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 3));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 0));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 2));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 3));
 
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
+			int slashes = ability.Cooldown.Count(x => x == '/');
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
-				question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, slashes));
+				question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, slashes));
 			}
 
 			question.Text = $"What is the cooldown of {ability.Name}?";
@@ -104,39 +123,30 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <summary>
 		/// Generates a new <see cref="Question"/> and a variety of answers about the cooldown of the given <see cref="Ability"/>.
 		/// </summary>
-		/// <param name="ability"></param>
-		/// <returns></returns>
-		private Question GenerateNewCooldownQuestion(Ability ability)
+		private Question BuildNewCooldownQuestion(Ability ability, string heroName)
 		{
 			var regex = new Regex(@"[\s'\-,.!?\(\)]+");
-			string abilityKey = $"{regex.Replace(ability.Hero.Name, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-cooldown".ToLowerInvariant();
+			string abilityKey = $"{regex.Replace(heroName, string.Empty)}-{regex.Replace(ability.Name, string.Empty)}-cooldown".ToLowerInvariant();
 
-			Question question = new Question()
-			{
-				Type = QuestionType.AbilityCooldown,
-				Text = $"What is the cooldown of {ability.Name}?",
-				AbilityId = ability.Id,
-				Key = abilityKey,
-				Answers = new List<Answer>()
-			};
+			Question question = new Question(
+				type: QuestionType.AbilityCooldown,
+				text: $"What is the cooldown of {ability.Name}?",
+				ability: ability,
+				key: abilityKey);
 
-			question.Answers.Add(new Answer()
-			{
-				Correct = true,
-				Text = ability.Cooldown
-			});
+			question.Answers.Add(new Answer(ability.Cooldown, true));
 
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 0));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 2));
-			question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, 3));
+			// Generate one of each type of incorrect answer (x, x/x/x, x/x/x/x)
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 0));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 2));
+			question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, 3));
 			
-			int slashes = ability.Cooldown.Count(x => x == '/');
-
 			// Generate extra incorrect answers of the same type as the correct answer to increase the difficulty
+			int slashes = ability.Cooldown.Count(x => x == '/');
 			int incorrectAnswersOfSameType = Math.Max(_questionSettings.IncorrectAnswersGenerated, 3) - 3;
 			for (int i = 0; i < incorrectAnswersOfSameType; i++)
 			{
-				question.Answers.Add(GenerateIncorrectCooldownAnswer(ability, question, slashes));
+				question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, slashes));
 			}
 
 			return question;
@@ -148,7 +158,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// <param name="ability">The <see cref="Ability"/> to generate an incorrect cooldown for.</param>
 		/// <param name="question">The <see cref="Question"/> that the answer will belong to.</param>
 		/// <param name="slashes">The number of forward slashes the incorrect cooldown should contain.</param>
-		private Answer GenerateIncorrectCooldownAnswer(Ability ability, Question question, int slashes)
+		private Answer BuildIncorrectCooldownAnswer(Ability ability, Question question, int slashes)
 		{
 			const int MaximumAttempts = 10;
 			for (int attemptNumber = 0; attemptNumber < MaximumAttempts; attemptNumber++)
@@ -247,26 +257,10 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 					continue;
 				}
 
-				return new Answer()
-				{
-					Correct = false,
-					QuestionId = question.Id,
-					Text = answerText
-				};
+				return new Answer(answerText, false);
 			}
 
 			throw new InvalidOperationException($"Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");
-		}
-
-		/// <summary>
-		/// Gets all the questions that relate to the ability with the given ID.
-		/// </summary>
-		private async Task<IEnumerable<Question>> GetQuestionsForAbility(int abilityId)
-		{
-			return await _context.Questions
-				.Include(x => x.Answers)
-				.Where(x => x.AbilityId == abilityId)
-				.ToListAsync();
 		}
 	}
 }

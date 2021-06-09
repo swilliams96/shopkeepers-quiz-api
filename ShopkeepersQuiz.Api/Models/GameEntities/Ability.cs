@@ -1,27 +1,31 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace ShopkeepersQuiz.Api.Models.GameEntities
 {
 	public class Ability
 	{
-		[Key]
-		public int Id { get; set; }
+		public Ability(string name, Guid heroId, string imageUrl, string manaCost, string cooldown)
+		{
+			Id = Guid.NewGuid();
+			Name = name;
+			HeroId = heroId;
+			ImageUrl = imageUrl;
+			ManaCost = manaCost;
+			Cooldown = cooldown;
+		}
 
-		[Required]
+		[BsonId]
+		public Guid Id { get; set; }
+
 		public string Name { get; set; }
 
 		public string ImageUrl { get; set; }
 
-		public int HeroId { get; set; }
+		public Guid HeroId { get; set; }
 
-		[Required]
 		public string ManaCost { get; set; }
 
-		[Required]
 		public string Cooldown { get; set; }
-
-		// Navigation Properties
-
-		public Hero Hero { get; private set; }
 	}
 }

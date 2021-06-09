@@ -1,23 +1,25 @@
-﻿using Flurl;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Runtime.Serialization;
 
 namespace ShopkeepersQuiz.Api.Models.GameEntities
 {
 	public class Hero
 	{
-		[Key]
-		public int Id { get; set; }
+		public Hero(string name, string wikiPageUrl)
+		{
+			Id = Guid.NewGuid();
+			Name = name;
+			WikiPageUrl = wikiPageUrl;
+		}
 
-		[Required]
+		[BsonId]
+		public Guid Id { get; set; }
+
 		public string Name { get; set; }
 
 		public string WikiPageUrl { get; set; }
 
-		// Navigiation Properties
-
-		public ICollection<Ability> Abilities { get; set; }
+		public ICollection<Ability> Abilities { get; set; } = new List<Ability>();
 	}
 }

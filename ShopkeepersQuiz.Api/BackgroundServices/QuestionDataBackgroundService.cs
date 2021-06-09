@@ -120,7 +120,6 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 					_logger.Information($"Generating questions using {generator.GetType().Name}...");
 					await generator.GenerateQuestions();
 				}
-
 			}
 			catch (Exception ex)
 			{
@@ -129,7 +128,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			finally
 			{
 				_currentlyRunning = false;
-				_logger.Information("Background task complete!");
+				_logger.Information("Background task complete.");
 			}
 		}
 	}
