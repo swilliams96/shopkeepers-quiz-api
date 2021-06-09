@@ -1,15 +1,20 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShopkeepersQuiz.Api.Models.Answers
 {
 	public class Answer
 	{
-		[Key]
-		[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-		public int Id { get; set; }
+		public Answer(string text, bool correct)
+		{
+			Id = Guid.NewGuid();
+			Text = text;
+			Correct = correct;
+		}
 
-		public int QuestionId { get; set; }
+		[BsonId]
+		public Guid Id { get; set; }
 
 		[Required]
 		public string Text { get; set; }

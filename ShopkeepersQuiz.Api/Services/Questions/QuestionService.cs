@@ -12,7 +12,7 @@ using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Questions;
 using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Questions;
-using ShopkeepersQuiz.Api.Repositories.Queues;
+using ShopkeepersQuiz.Api.Repositories.QueueEntries;
 using ShopkeepersQuiz.Api.Utilities;
 using System;
 using System.Collections.Generic;
@@ -26,20 +26,20 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 		const int TimeDriftBufferSeconds = 1;
 
 		private readonly IQuestionRepository _questionRepository;
-		private readonly IQueueRepository _queueRepository;
+		private readonly IQueueEntryRepository _queueEntryRepository;
 		private readonly QuestionSettings _questionSettings;
 		private readonly IMemoryCache _cache;
 		private readonly DateTimeProvider _dateTimeProvider;
 
 		public QuestionService(
 			IQuestionRepository questionRepository,
-			IQueueRepository queueRepository,
+			IQueueEntryRepository queueRepository,
 			IOptions<QuestionSettings> questionSettings,
 			IMemoryCache cache,
 			DateTimeProvider dateTimeProvider)
 		{
 			_questionRepository = questionRepository;
-			_queueRepository = queueRepository;
+			_queueEntryRepository = queueRepository;
 			_questionSettings = questionSettings.Value;
 			_cache = cache;
 			_dateTimeProvider = dateTimeProvider;
@@ -55,7 +55,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 				return questionQueue;
 			}
 
-			questionQueue = (await _queueRepository.GetUpcomingQueueEntries()).ToList();
+			questionQueue = (await _queueEntryRepository.GetUpcomingQueueEntries()).ToList();
 			if (questionQueue.Count >= questionCount)
 			{
 				_cache.Set(CacheKeys.QuestionQueue, questionQueue);
@@ -207,7 +207,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 				throw new ArgumentNullException(nameof(questionQueue));
 			}
 
-			IEnumerable<QueueEntry> existingQueueEntries = await _queueRepository.GetUpcomingQueueEntries();
+			IEnumerable<QueueEntry> existingQueueEntries = await _queueEntryRepository.GetUpcomingQueueEntries();
 
 			IEnumerable<QueueEntry> queueEntriesToAdd = questionQueue
 				.Where(x => x.StartTimeUtc >= _dateTimeProvider.GetUtcNow())
@@ -215,7 +215,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions
 
 			foreach (var entry in queueEntriesToAdd)
 			{
-				await _queueRepository.CreateQueueEntry(entry);
+				await _queueEntryRepository.CreateQueueEntry(entry);
 			}
 		}
 	}

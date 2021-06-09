@@ -40,8 +40,8 @@ namespace ShopkeepersQuiz.Api.Controllers
 
             return result.Match<IActionResult>(
                 answerDto => Ok(answerDto),
-                notFound => NotFound(ResponseMessages.Errors.AnwerNotFound),
-                notAvailable => NotFound(ResponseMessages.Errors.AnwerNotAvailableYet));
+                notFound => NotFound(ResponseMessages.Errors.AnswerNotFound),
+                notAvailable => NotFound(ResponseMessages.Errors.AnswerNotAvailableYet));
         }
     }
 }

@@ -8,7 +8,7 @@ using ShopkeepersQuiz.Api.Models.Cache;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.Queues;
 using ShopkeepersQuiz.Api.Repositories.Questions;
-using ShopkeepersQuiz.Api.Repositories.Queues;
+using ShopkeepersQuiz.Api.Repositories.QueueEntries;
 using ShopkeepersQuiz.Api.Services.Questions;
 using ShopkeepersQuiz.Api.Tests.Common;
 using ShopkeepersQuiz.Api.Tests.Common.Cache;
@@ -26,7 +26,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 		public static readonly DateTime UtcNowFixed = new DateTime(2000, 1, 1, 12, 0, 0, DateTimeKind.Utc);
 
 		private readonly Mock<IQuestionRepository> _mockQuestionRepository = new Mock<IQuestionRepository>();
-		private readonly Mock<IQueueRepository> _mockQueueRepository = new Mock<IQueueRepository>();
+		private readonly Mock<IQueueEntryRepository> _mockQueueEntryRepository = new Mock<IQueueEntryRepository>();
 		private readonly IMemoryCache _cache = new MemoryCache(Options.Create(new MemoryCacheOptions()));
 		private readonly Mock<DateTimeProvider> _mockDateTimeProvider = new Mock<DateTimeProvider>();
 
@@ -38,7 +38,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 		{
 			Sut = new QuestionService(
 				_mockQuestionRepository.Object,
-				_mockQueueRepository.Object,
+				_mockQueueEntryRepository.Object,
 				Options.Create(_questionSettings),
 				_cache,
 				_mockDateTimeProvider.Object);
@@ -55,7 +55,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				.CreateMany();
 			_cache.Set(CacheKeys.QuestionQueue, cacheResults);
 
-			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries())
+			_mockQueueEntryRepository.Setup(x => x.GetUpcomingQueueEntries())
 				.Throws(new AssertionFailedException("QueueRepository should not be called in this scenario."));
 
 			_questionSettings.PreloadedQuestionsCount = cacheResults.Count();
@@ -73,7 +73,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
 				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
 				.CreateMany();
-			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+			_mockQueueEntryRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
 
 			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
 
@@ -90,7 +90,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
 				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
 				.CreateMany(3);
-			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+			_mockQueueEntryRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
 
 			var cacheResults = new List<QueueEntry>() { repositoryResults.First() };
 
@@ -112,7 +112,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				.With(x => x.StartTimeUtc, UtcNowFixed.AddSeconds(30))
 				.With(x => x.EndTimeUtc, UtcNowFixed.AddSeconds(45))
 				.CreateMany(3);
-			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+			_mockQueueEntryRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
 
 			var cacheResults = new List<QueueEntry>() { repositoryResults.First() };
 
@@ -135,7 +135,7 @@ namespace ShopkeepersQuiz.Api.Tests.Services.Questions
 				.With(x => x.StartTimeUtc, testTimeUtcNow.AddSeconds(30))
 				.With(x => x.EndTimeUtc, testTimeUtcNow.AddSeconds(45))
 				.CreateMany(3);
-			_mockQueueRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
+			_mockQueueEntryRepository.Setup(x => x.GetUpcomingQueueEntries()).ReturnsAsync(repositoryResults);
 
 			_questionSettings.PreloadedQuestionsCount = repositoryResults.Count();
 
