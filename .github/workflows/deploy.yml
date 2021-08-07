@@ -1,0 +1,51 @@
+name: Docker deploy over SSH
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+        default: 'latest'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: production_environment
+      url: https://api.shopkeepersquiz.com
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup release version
+        run: export VERSION=${{ github.event.inputs.version }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CONTAINERREGISTRYACCESSTOKEN }}
+
+      - name: Setup SSH key & host
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.DEPLOYMENT_SSH_KEY }}
+          ssh-host: ${{ secrets.DEPLOYMENT_HOST }}
+
+      - name: Create Docker Context
+        run: docker context create deploy --docker "host=ssh://${{ secrets.DEPLOYMENT_SSH_USER }}@${{ secrets.DEPLOYMENT_HOST }}"
+
+      - name: Use Docker Context
+        run: docker context use deploy
+
+      - name: List running containers
+        run: docker ps
+
+      - name: Deploy with Docker Compose
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+        run: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
