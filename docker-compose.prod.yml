@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  nginx: # Reverse proxy for other services
+    container_name: reverse-proxy
+    build: ./docker/nginx
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - CERTBOT_EMAIL
+    volumes:
+      - /var/docker/nginx/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - api
+      - seq
+
+  api:
+    image: ghcr.io/swilliams96/shopkeepers-quiz-api:${VERSION}
+    restart: unless-stopped
+    ports:
+      - 5555:80
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      QuestionSettings__PreloadedQuestionsCount: 5
+      QuestionSettings__QuestionTimeSeconds: 10
+      QuestionSettings__AnswerTimeSeconds: 5
+      QuestionSettings__IncorrectAnswersGenerated: 5
+      ScraperSettings__RunEvery: "0 4 ? * THU"
+      ConnectionStrings__MongoDb: "mongodb://mongoadmin:${MONGO_PASSWORD}@shopkeepers-quiz-mongodb:27017/shopkeepers-quiz?authSource=admin&readPreference=primary&ssl=false"
+      Serilog__MinimumLevel: "Information"
+      Serilog__Using__1: "Serilog.Sinks.Seq"
+      Serilog__WriteTo__1__Name: "Seq"
+      Serilog__WriteTo__1__Args__serverUrl: "http://seq:80"
+
+  
+  mongodb:
+    restart: unless-stopped
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+
+  seq:
+    restart: unless-stopped
+    ports:
+      - 5341:80
+    volumes:
+      - /var/docker/seq:/data
+

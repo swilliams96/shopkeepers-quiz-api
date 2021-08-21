@@ -1,22 +1,11 @@
-version: "3.8"
+# For local docker setup, see docker-compose.local.yml
+# For production docker setup, see docker-compose.prod.yml
+
+version: "3.9"
+
 services:
   api:
     container_name: shopkeepers-quiz-api
-    build: .
-    ports:
-      - "5555:80"
-    environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
-      QuestionSettings__PreloadedQuestionsCount: 5
-      QuestionSettings__QuestionTimeSeconds: 10
-      QuestionSettings__AnswerTimeSeconds: 5
-      QuestionSettings__IncorrectAnswersGenerated: 5
-      ScraperSettings__RunEvery: "0 4 ? * THU"
-      ConnectionStrings__MongoDb: "mongodb://mongoadmin:secret@shopkeepers-quiz-mongodb:27017/shopkeepers-quiz?authSource=admin&readPreference=primary&ssl=false"
-      Serilog__MinimumLevel: "Information"
-      Serilog__Using__1: "Serilog.Sinks.Seq"
-      Serilog__WriteTo__1__Name: "Seq"
-      Serilog__WriteTo__1__Args__serverUrl: "http://seq:80"
     depends_on:
       - mongodb
       - seq
@@ -24,26 +13,9 @@ services:
   mongodb:
     container_name: shopkeepers-quiz-mongodb
     image: mongo:latest
-    restart: always
-    ports:
-      - "27017:27017"
-    volumes:
-      - "mongdb-data:/data/db"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongoadmin
-      MONGO_INITDB_ROOT_PASSWORD: secret
 
   seq:
     container_name: shopkeepers-quiz-logs
-    image: "datalust/seq:latest"
-    ports:
-      - 5341:80
-    volumes:
-      - "seq-data:/data"
+    image: datalust/seq:latest
     environment:
       ACCEPT_EULA: "Y"
-
-volumes:
-  mongdb-data:
-  seq-data:
-  
