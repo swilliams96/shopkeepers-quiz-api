@@ -18,8 +18,8 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 	/// </summary>
 	public class GamepediaScraper : IScraper
 	{
-		const string BaseUrl = @"https://dota2.gamepedia.com";
-		const string HeroesListUrl = @"https://dota2.gamepedia.com/Heroes";
+		const string BaseUrl = @"https://dota2.fandom.com/wiki/";
+		const string HeroesListUrl = @"https://dota2.fandom.com/wiki/Heroes";
 
 		private readonly HtmlWeb _web = new HtmlWeb();
 
@@ -79,7 +79,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 
 			HtmlDocument heroesListHtml = _web.Load(HeroesListUrl);
 
-			HtmlNodeCollection heroAnchorLinkNodes = heroesListHtml.DocumentNode.SelectNodes("//div[@id='bodyContent']//tbody[1]//tr[td]/td/div//a");
+			HtmlNodeCollection heroAnchorLinkNodes = heroesListHtml.DocumentNode.SelectNodes("//div[@id='content']//tbody[1]//tr[td]/td/div//a");
 			if (!(heroAnchorLinkNodes?.Any() ?? false))
 			{
 				throw new NodeNotFoundException("Failed to find any heroes on the hero list at: " + HeroesListUrl);
