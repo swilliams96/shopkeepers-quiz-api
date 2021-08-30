@@ -20,6 +20,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 	{
 		private readonly ScraperSettings _scraperSettings;
 		private readonly IEnumerable<IScraper> _scrapers;
+		private readonly IEnumerable<IQuestionGenerator> _questionGenerators;
 		private readonly ILogger _logger;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 
@@ -46,11 +47,13 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		public QuestionDataBackgroundService(
 			IOptions<ScraperSettings> scraperSettings,
 			IEnumerable<IScraper> scrapers,
+			IEnumerable<IQuestionGenerator> questionGenerators,
 			ILogger logger,
 			IServiceScopeFactory serviceScopeFactory)
 		{
 			_scraperSettings = scraperSettings.Value;
 			_scrapers = scrapers;
+			_questionGenerators = questionGenerators;
 			_logger = logger.ForContext<QuestionDataBackgroundService>();
 			_serviceScopeFactory = serviceScopeFactory;
 		}
@@ -102,7 +105,7 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 		private async Task RunScrapers()
 		{
 			_currentlyRunning = true;
-			_logger.Information("Starting background service run...");
+			_logger.Information("Starting scheduled run of the scrapers and question generators...");
 
 			using var scope = _serviceScopeFactory.CreateScope();
 
@@ -110,14 +113,13 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			{
 				foreach (var scraper in _scrapers)
 				{
-					_logger.Information($"Running {scraper.GetType().Name}...");
+					_logger.Information("Scraping data using {Scraper}", scraper.GetType().Name);
 					await scraper.RunScraper(scope);
 				}
 
-				IEnumerable<IQuestionGenerator> questionGenerators = scope.ServiceProvider.GetServices<IQuestionGenerator>();
-				foreach (var generator in questionGenerators)
+				foreach (var generator in _questionGenerators)
 				{
-					_logger.Information($"Generating questions using {generator.GetType().Name}...");
+					_logger.Information("Generating questions using {QuestionGenerator}", generator.GetType().Name);
 					await generator.GenerateQuestions();
 				}
 			}
@@ -128,7 +130,6 @@ namespace ShopkeepersQuiz.Api.BackgroundServices
 			finally
 			{
 				_currentlyRunning = false;
-				_logger.Information("Background task complete.");
 			}
 		}
 	}

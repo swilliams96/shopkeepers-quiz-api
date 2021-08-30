@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Context;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
@@ -45,43 +46,59 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 
 			foreach (Hero hero in heroes)
 			{
-				foreach (Ability ability in hero.Abilities)
+				using (LogContext.PushProperty("HeroName", hero.Name))
 				{
-					IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
-					IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
-
-					if (cooldownQuestionsForAbility.Any())
+					foreach (Ability ability in hero.Abilities)
 					{
-						foreach (Question question in cooldownQuestionsForAbility)
+						IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
+						IEnumerable<Question> cooldownQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityCooldown);
+
+						if (cooldownQuestionsForAbility.Any())
 						{
-							Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-							if (correctAnswer == null)
+							foreach (Question question in cooldownQuestionsForAbility)
 							{
-								await _questionRepository.DeleteQuestion(question.Id);
+								Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+								if (correctAnswer == null)
+								{
+									await _questionRepository.DeleteQuestion(question.Id);
+
+									_logger.Warning("Could not find a correct answer for existing cooldown question for {AbilityName}", ability.Name);
+									continue;
+								}
+
+								RebuildCooldownQuestionIfOutdated(question, ability);
+
+								var emptyAnswers = question.Answers.Where(x => string.IsNullOrWhiteSpace(x.Text));
+								if (emptyAnswers.Any())
+								{
+									await _questionRepository.DeleteQuestion(question.Id);
+
+									_logger.Warning(
+										"Failed to update cooldown question for {AbilityName} as {EmptyAnswersCount} empty answers were generated",
+										ability.Name,
+										emptyAnswers.Count());
+									continue;
+								}
+
+								await _questionRepository.UpdateQuestion(question);
+							}
+						}
+						else
+						{
+							Question question = BuildNewCooldownQuestion(ability, hero.Name);
+
+							var emptyAnswers = question.Answers.Where(x => string.IsNullOrWhiteSpace(x?.Text));
+							if (emptyAnswers.Any())
+							{
+								_logger.Warning(
+									"Failed to create cooldown question for {AbilityName} as {EmptyAnswersCount} empty answers were generated",
+									ability.Name,
+									emptyAnswers.Count());
 								continue;
 							}
 
-							RebuildCooldownQuestionIfOutdated(question, ability);
-
-							if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
-							{
-								await _questionRepository.DeleteQuestion(question.Id);
-								continue;
-							}
-
-							await _questionRepository.UpdateQuestion(question);
+							await _questionRepository.CreateQuestion(question);
 						}
-					}
-					else
-					{
-						Question question = BuildNewCooldownQuestion(ability, hero.Name);
-
-						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
-						{
-							continue;
-						}
-
-						await _questionRepository.CreateQuestion(question);
 					}
 				}
 			}
@@ -92,8 +109,8 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// </summary>
 		private void RebuildCooldownQuestionIfOutdated(Question question, Ability ability)
 		{
-			Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-			if (correctAnswer?.Text == ability.Cooldown)
+			Answer oldCorrectAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+			if (oldCorrectAnswer?.Text == ability.Cooldown)
 			{
 				// Ability hasn't changed the cooldown so no need to regenerate the question
 				return;
@@ -118,6 +135,11 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			}
 
 			question.Text = $"What is the cooldown of {ability.Name}?";
+
+			_logger
+				.ForContext("OldAnswer", oldCorrectAnswer?.Text)
+				.ForContext("NewAnswer", ability.Cooldown)
+				.Debug("Updated cooldown question for {AbilityName}", ability.Name);
 		}
 
 		/// <summary>
@@ -148,6 +170,10 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			{
 				question.Answers.Add(BuildIncorrectCooldownAnswer(ability, question, slashes));
 			}
+
+			_logger
+				.ForContext("Answer", ability.Cooldown)
+				.Debug("Generated new cooldown question for {AbilityName}", ability.Name);
 
 			return question;
 		}
@@ -260,7 +286,8 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				return new Answer(answerText, false);
 			}
 
-			throw new InvalidOperationException($"Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");
+			_logger.Error("Failed to generate an incorrect cooldown question for {AbilityName} within {MaximumAttempts} attempts", ability.Name, MaximumAttempts);
+			return null;
 		}
 	}
 }

@@ -81,20 +81,7 @@ namespace ShopkeepersQuiz.Api
 				config.RoutePrefix = string.Empty;
 			});
 
-
 			app.UseSerilogRequestLogging();
-
-			EnsureDatabaseMigrated(app);
-		}
-
-		/// <summary>
-		/// Ensures that the database is migrated fully using EF Core.
-		/// </summary>
-		private void EnsureDatabaseMigrated(IApplicationBuilder app)
-		{
-			//using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
-			//using var context = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-			//context.Database.Migrate();
 		}
 
 		/// <summary>
@@ -108,22 +95,22 @@ namespace ShopkeepersQuiz.Api
 			services.Configure<ScraperSettings>(options => Configuration.GetSection(nameof(ScraperSettings)).Bind(options));
 
 			// App Services
-			services.AddScoped<IQuestionService, QuestionService>();
+			services.AddSingleton<IQuestionService, QuestionService>();
 
 			// App Repositories
-			services.AddTransient<IQuestionRepository, MongoDbQuestionRepository>();
-			services.AddTransient<IQueueEntryRepository, MongoDbQueueEntryRepository>();
-			services.AddTransient<IHeroRepository, MongoDbHeroRepository>();
+			services.AddSingleton<IQuestionRepository, MongoDbQuestionRepository>();
+			services.AddSingleton<IQueueEntryRepository, MongoDbQueueEntryRepository>();
+			services.AddSingleton<IHeroRepository, MongoDbHeroRepository>();
 
 			// App Utilities
 			services.AddSingleton<RandomHelper>();
 
 			// Scrapers
-			services.AddTransient<IScraper, GamepediaScraper>();
+			services.AddTransient<IScraper, FandomScraper>();
 
 			// Question Generators
-			services.AddScoped<IQuestionGenerator, CooldownQuestionGenerator>();
-			services.AddScoped<IQuestionGenerator, ManaCostQuestionGenerator>();
+			services.AddTransient<IQuestionGenerator, CooldownQuestionGenerator>();
+			services.AddTransient<IQuestionGenerator, ManaCostQuestionGenerator>();
 		}
 	}
 }
