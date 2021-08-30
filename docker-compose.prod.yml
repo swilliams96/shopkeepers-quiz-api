@@ -39,6 +39,8 @@ services:
     restart: unless-stopped
     ports:
       - 27017:27017
+    volumes:
+      - /var/docker/mongodb:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongoadmin
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
