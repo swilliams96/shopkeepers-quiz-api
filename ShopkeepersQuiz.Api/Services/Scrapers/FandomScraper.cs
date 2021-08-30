@@ -19,7 +19,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 	/// </summary>
 	public class FandomScraper : IScraper
 	{
-		private const string BaseUrl = @"https://dota2.fandom.com/wiki/";
+		private const string BaseUrl = @"https://dota2.fandom.com/";
 		private const string HeroesListUrl = @"https://dota2.fandom.com/wiki/Heroes";
 
 		private const string HeroAncorLinksXPath = "//div[@id='content']//tbody[1]//tr[td]/td/div//a";
