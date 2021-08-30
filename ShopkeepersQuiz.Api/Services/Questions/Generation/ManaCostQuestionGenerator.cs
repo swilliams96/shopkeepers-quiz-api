@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Context;
 using ShopkeepersQuiz.Api.Models.Answers;
 using ShopkeepersQuiz.Api.Models.Configuration;
 using ShopkeepersQuiz.Api.Models.GameEntities;
@@ -45,43 +46,59 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 
 			foreach (Hero hero in heroes)
 			{
-				foreach (Ability ability in hero.Abilities)
+				using (LogContext.PushProperty("HeroName", hero.Name))
 				{
-					IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
-					IEnumerable<Question> manaCostQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityManaCost);
-
-					if (manaCostQuestionsForAbility.Any())
+					foreach (Ability ability in hero.Abilities)
 					{
-						foreach (Question question in manaCostQuestionsForAbility)
+						IEnumerable<Question> abilityQuestions = await _questionRepository.GetQuestionsForAbility(ability.Id);
+						IEnumerable<Question> manaCostQuestionsForAbility = abilityQuestions.Where(x => x.Type == QuestionType.AbilityManaCost);
+
+						if (manaCostQuestionsForAbility.Any())
 						{
-							Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-							if (correctAnswer == null)
+							foreach (Question question in manaCostQuestionsForAbility)
 							{
-								await _questionRepository.DeleteQuestion(question.Id);
+								Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+								if (correctAnswer == null)
+								{
+									await _questionRepository.DeleteQuestion(question.Id);
+
+									_logger.Warning("Could not find a correct answer for existing mana cost question for {AbilityName}", ability.Name);
+									continue;
+								}
+
+								RebuildManaCostQuestionIfOutdated(question, ability);
+
+								var emptyAnswers = question.Answers.Where(x => string.IsNullOrWhiteSpace(x.Text));
+								if (emptyAnswers.Any())
+								{
+									await _questionRepository.DeleteQuestion(question.Id);
+
+									_logger.Warning(
+										"Failed to update mana cost question for {AbilityName} as {EmptyAnswersCount} empty answers were generated",
+										ability.Name,
+										emptyAnswers.Count());
+									continue;
+								}
+
+								await _questionRepository.UpdateQuestion(question);
+							}
+						}
+						else
+						{
+							Question question = BuildNewManaCostQuestion(ability, hero.Name);
+
+							var emptyAnswers = question.Answers.Where(x => string.IsNullOrWhiteSpace(x?.Text));
+							if (emptyAnswers.Any())
+							{
+								_logger.Warning(
+									"Failed to create mana cost question for {AbilityName} as {EmptyAnswersCount} empty answers were generated",
+									ability.Name,
+									emptyAnswers.Count());
 								continue;
 							}
 
-							RebuildManaCostQuestionIfOutdated(question, ability);
-
-							if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x.Text)))
-							{
-								await _questionRepository.DeleteQuestion(question.Id);
-								continue;
-							}
-
-							await _questionRepository.UpdateQuestion(question);
+							await _questionRepository.CreateQuestion(question);
 						}
-					}
-					else
-					{
-						Question question = BuildNewManaCostQuestion(ability, hero.Name);
-
-						if (question.Answers.Any(x => string.IsNullOrWhiteSpace(x?.Text)))
-						{
-							continue;
-						}
-
-						await _questionRepository.CreateQuestion(question);
 					}
 				}
 			}
@@ -92,8 +109,8 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 		/// </summary>
 		private void RebuildManaCostQuestionIfOutdated(Question question, Ability ability)
 		{
-			Answer correctAnswer = question.Answers.SingleOrDefault(x => x.Correct);
-			if (correctAnswer?.Text == ability.ManaCost)
+			Answer oldCorrectAnswer = question.Answers.SingleOrDefault(x => x.Correct);
+			if (oldCorrectAnswer?.Text == ability.ManaCost)
 			{
 				// Ability hasn't changed the mana cost so no need to regenerate the question
 				return;
@@ -118,6 +135,11 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			}
 
 			question.Text = $"What is the mana cost of {ability.Name}?";
+
+			_logger
+				.ForContext("OldAnswer", oldCorrectAnswer?.Text)
+				.ForContext("NewAnswer", ability.ManaCost)
+				.Debug("Updated manacost question for {AbilityName}", ability.Name);
 		}
 
 		/// <summary>
@@ -148,6 +170,10 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 			{
 				question.Answers.Add(BuildIncorrectManaCostAnswer(ability, question, slashes));
 			}
+
+			_logger
+				.ForContext("Answer", ability.ManaCost)
+				.Debug("Generated new mana cost question for {AbilityName}", ability.Name);
 
 			return question;
 		}
@@ -261,7 +287,7 @@ namespace ShopkeepersQuiz.Api.Services.Questions.Generation
 				return new Answer(answerText, false);
 			}
 
-			_logger.Warning("Failed to generate an incorrect cooldown for ability '{ability.Name}' within {MaximumAttempts} attempts.");
+			_logger.Warning("Failed to generate an incorrect mana cost question for ability '{ability.Name}' within {MaximumAttempts} attempts.");
 			return null;
 		}
 	}

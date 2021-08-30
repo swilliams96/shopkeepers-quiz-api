@@ -1,11 +1,14 @@
 ﻿using Flurl;
 using HtmlAgilityPack;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Bson;
+using Serilog;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Repositories.Heroes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -16,14 +19,21 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 	/// Retrieves Hero and Ability data from the Dota 2 Gamepedia wiki (https://dota2.gamepedia.com/), which allows use of its 
 	/// data under the CC BY-NC-SA 3.0 licence (https://creativecommons.org/licenses/by-sa/3.0/).
 	/// </summary>
-	public class GamepediaScraper : IScraper
+	public class FandomScraper : IScraper
 	{
-		const string BaseUrl = @"https://dota2.fandom.com/wiki/";
-		const string HeroesListUrl = @"https://dota2.fandom.com/wiki/Heroes";
+		private const string BaseUrl = @"https://dota2.fandom.com/wiki/";
+		private const string HeroesListUrl = @"https://dota2.fandom.com/wiki/Heroes";
+
+		private const string HeroAncorLinksXPath = "//div[@id='content']//tbody[1]//tr[td]/td/div//a";
+		private const string AbilityDetailsXPath = "//div[@class='ability-background']/div[1]";
+		private const string AbilityImageXPath = ".//div[contains(@class, 'ico_')]/a/img[1]";
+		private const string AbilityManaCostXPath = ".//a[@href='/wiki/Mana']/../parent::div";
+		private const string AbilityCooldownXPath = ".//a[@href='/wiki/Cooldown']/../parent::div";
+
+		private readonly IHeroRepository _heroRepository;
+		private readonly ILogger _logger;
 
 		private readonly HtmlWeb _web = new HtmlWeb();
-
-		private IHeroRepository _heroRepository;
 
 		/// <summary>
 		/// The abilities that shouldn't be stored as they are not "real" abilities that we want to generate questions for.
@@ -51,23 +61,23 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 			{ "Weaver", new string[] { "Mana Break" } }
 		};
 
+		public FandomScraper(IHeroRepository heroRepository, ILogger logger)
+		{
+			_logger = logger.ForContext<FandomScraper>();
+
+			_web = new HtmlWeb();
+			_web.UserAgent = "Shopkeeper's Quiz";
+		}
+
 		public async Task RunScraper(IServiceScope scope)
 		{
-			_heroRepository = scope.ServiceProvider.GetRequiredService<IHeroRepository>();
-			_web.UserAgent = "Shopkeeper's Quiz";
-
-			Console.WriteLine("Running Gamepedia scraper...");
-
 			IEnumerable<Hero> scrapedHeroes = ScrapeHeroes();
 			await SaveHeroData(scrapedHeroes);
 
+
+
 			IEnumerable<Ability> scrapedAbilities = await ScrapeAbilities();
 			await SaveAbilityData(scrapedAbilities);
-
-			//IEnumerable<Item> scrapedItems = ScrapeItems();
-			//await SaveItemData(scrapedItems);
-
-			Console.WriteLine("Finished Gamepedia scraper!");
 		}
 
 		/// <summary>
@@ -75,11 +85,9 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// </summary>
 		private IEnumerable<Hero> ScrapeHeroes()
 		{
-			Console.WriteLine($"Scraping heroes...");
-
 			HtmlDocument heroesListHtml = _web.Load(HeroesListUrl);
 
-			HtmlNodeCollection heroAnchorLinkNodes = heroesListHtml.DocumentNode.SelectNodes("//div[@id='content']//tbody[1]//tr[td]/td/div//a");
+			HtmlNodeCollection heroAnchorLinkNodes = heroesListHtml.DocumentNode.SelectNodes(HeroAncorLinksXPath);
 			if (!(heroAnchorLinkNodes?.Any() ?? false))
 			{
 				throw new NodeNotFoundException("Failed to find any heroes on the hero list at: " + HeroesListUrl);
@@ -99,17 +107,13 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		{
 			var abilities = new List<Ability>();
 
-			Console.WriteLine($"Scraping abilities...");
-
 			IEnumerable<Hero> heroes = await _heroRepository.GetAllHeroes();
 
 			foreach (Hero hero in heroes)
 			{
 				HtmlDocument heroDetailsHtml = _web.Load(hero.WikiPageUrl);
 
-				Console.WriteLine($"    - {hero.Name}");
-
-				HtmlNodeCollection heroAbilityNodes = heroDetailsHtml.DocumentNode.SelectNodes("//div[@class='ability-background']/div[1]");
+				HtmlNodeCollection heroAbilityNodes = heroDetailsHtml.DocumentNode.SelectNodes(AbilityDetailsXPath);
 				if (!(heroAbilityNodes?.Any() ?? false))
 				{
 					throw new NodeNotFoundException($"Failed to find any abilities for {hero.Name} at: {hero.WikiPageUrl}");
@@ -142,7 +146,10 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 						cooldown: GetCooldownForAbility(heroAbilityNode)));
 				}
 
-				// Add a delay after each request so we don't accidentally run a denial-of-service attack!
+				_logger.Debug("Found {AbilitiesCount} abilities for {HeroName}", abilities.Count, hero.Name);
+
+
+				// Add a delay after each request so we don't accidentally run a DoS attack!
 				Thread.Sleep(400);
 			}
 
@@ -155,7 +162,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// <param name="abilityNode">The <see cref="HtmlNode"/> containing the ability data.</param>
 		private string GetImageUrlForAbility(HtmlNode abilityNode)
 		{
-			return abilityNode.SelectSingleNode(".//div[contains(@class, 'ico_')]/a/img[1]")?.Attributes["src"].Value;
+			return abilityNode.SelectSingleNode(AbilityImageXPath)?.Attributes["src"].Value;
 		}
 
 		/// <summary>
@@ -165,9 +172,9 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		private string GetManaCostForAbility(HtmlNode abilityNode)
 		{
 			string manaCost = HttpUtility.HtmlDecode(
-				abilityNode.SelectSingleNode(".//a[@href='/wiki/Mana']/../parent::div")?.GetDirectInnerText());
+				abilityNode.SelectSingleNode(AbilityManaCostXPath)?.GetDirectInnerText());
 
-			return string.IsNullOrWhiteSpace(manaCost) ? "0" : manaCost.Trim();
+			return string.IsNullOrWhiteSpace(manaCost) ? 0.ToString() : manaCost.Trim();
 		}
 
 		/// <summary>
@@ -177,7 +184,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		private string GetCooldownForAbility(HtmlNode abilityNode)
 		{
 			string cooldown = HttpUtility.HtmlDecode(
-				abilityNode.SelectSingleNode(".//a[@href='/wiki/Cooldown']/../parent::div")?.GetDirectInnerText());
+				abilityNode.SelectSingleNode(AbilityCooldownXPath)?.GetDirectInnerText());
 
 			int bracketIndex = cooldown?.IndexOf("(") ?? -1;
 			if (bracketIndex != -1)
@@ -185,7 +192,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 				cooldown = cooldown?.Substring(0, bracketIndex);
 			}
 
-			return string.IsNullOrWhiteSpace(cooldown) ? "0" : cooldown.Trim();
+			return string.IsNullOrWhiteSpace(cooldown) ? 0.ToString() : cooldown.Trim();
 		}
 
 		/// <summary>
@@ -197,18 +204,28 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		/// <returns>The final list of all <see cref="Hero"/> entities after the save operation is complete.</returns>
 		private async Task SaveHeroData(IEnumerable<Hero> heroes)
 		{
-			IEnumerable<Hero> existingHeroes = await _heroRepository.GetAllHeroes();
+			var existingHeroes = await _heroRepository.GetAllHeroes();
 
-			IEnumerable<Hero> unsavedHeroes = heroes.Where(hero =>
-				!existingHeroes.Any(x => x.Name.Equals(hero.Name, StringComparison.InvariantCultureIgnoreCase)));
-			IEnumerable<Hero> notFoundHeroes = existingHeroes.Where(existingHero =>
-				!heroes.Any(x => x.Name.Equals(existingHero.Name, StringComparison.InvariantCultureIgnoreCase)));
+			var unsavedHeroes = heroes
+				.Where(hero => !existingHeroes.Any(x => x.Name.Equals(hero.Name, StringComparison.InvariantCultureIgnoreCase)))
+				.OrderBy(x => x.Name)
+				.ToList();
+			var notFoundHeroIds = existingHeroes
+				.Where(existingHero => !heroes.Any(x => x.Name.Equals(existingHero.Name, StringComparison.InvariantCultureIgnoreCase)))
+				.Select(x => x.Id)
+				.ToList();
 
 			// Remove missing heroes
-			await _heroRepository.DeleteHeroes(notFoundHeroes.Select(x => x.Id));
+			await _heroRepository.DeleteHeroes(notFoundHeroIds);
 
 			// Add new heroes
-			await _heroRepository.CreateHeroes(unsavedHeroes.OrderBy(x => x.Name));
+			await _heroRepository.CreateHeroes(unsavedHeroes);
+
+			_logger.Information(
+				"Hero data saved - {NewCount} new, {RemovedCount} removed, {UpdatedHeroCount} updated",
+				unsavedHeroes.Count,
+				notFoundHeroIds.Count,
+				heroes.Count() - unsavedHeroes.Count);
 		}
 
 		/// <summary>
@@ -258,6 +275,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 					}
 				}
 
+				await _heroRepository.UpdateHero(hero);
 				await _heroRepository.UpdateHero(hero);
 			}
 		}
