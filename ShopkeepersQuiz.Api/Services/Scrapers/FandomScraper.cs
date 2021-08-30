@@ -1,14 +1,12 @@
 ﻿using Flurl;
 using HtmlAgilityPack;
 using Microsoft.Extensions.DependencyInjection;
-using MongoDB.Bson;
 using Serilog;
 using ShopkeepersQuiz.Api.Models.GameEntities;
 using ShopkeepersQuiz.Api.Repositories.Heroes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -63,6 +61,7 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 
 		public FandomScraper(IHeroRepository heroRepository, ILogger logger)
 		{
+			_heroRepository = heroRepository;
 			_logger = logger.ForContext<FandomScraper>();
 
 			_web = new HtmlWeb();
@@ -73,8 +72,6 @@ namespace ShopkeepersQuiz.Api.Services.Scrapers
 		{
 			IEnumerable<Hero> scrapedHeroes = ScrapeHeroes();
 			await SaveHeroData(scrapedHeroes);
-
-
 
 			IEnumerable<Ability> scrapedAbilities = await ScrapeAbilities();
 			await SaveAbilityData(scrapedAbilities);
