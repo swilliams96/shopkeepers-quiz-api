@@ -39,5 +39,5 @@ jobs:
         run: |
           docker context create deploy --docker "host=ssh://${{ secrets.DEPLOYMENT_SSH_USER }}@${{ secrets.DEPLOYMENT_HOST }}"
           docker context use deploy
-          docker-compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+          docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull -q
           docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
