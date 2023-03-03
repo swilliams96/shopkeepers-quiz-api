@@ -27,7 +27,7 @@
     <PackageReference Include="Flurl" Version="2.8.2" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.24" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.8" />
-    <PackageReference Include="MongoDB.Driver" Version="2.11.6" />
+    <PackageReference Include="MongoDB.Driver" Version="2.19.0" />
     <PackageReference Include="OneOf" Version="2.1.155" />
     <PackageReference Include="Serilog" Version="2.10.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="3.4.0" />
